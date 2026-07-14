@@ -17,6 +17,15 @@
 <meta name="twitter:description" content="1枚だけ違う色をタップし続けろ。あなたの色感偏差値は？">
 <meta name="twitter:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
 
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-8YJKBZ8V02"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-8YJKBZ8V02');
+</script>
+
 <style>
   :root{
     --bg:#1c1a20;
@@ -354,6 +363,7 @@
     });
     stopFever();
     $('reveal-msg').textContent = '';
+    if(typeof gtag === 'function') gtag('event', 'game_start');
     show('scr-game');
     buildLevel();
     paintHud();
@@ -405,6 +415,14 @@
     $('bestval2').textContent = best.toLocaleString();
     $('bestline').hidden = false;
 
+    if(typeof gtag === 'function') gtag('event', 'game_end', {
+      score: state.score,
+      level_reached: state.level,
+      max_combo: state.maxCombo,
+      deviation: d,
+      title_name: title,
+    });
+
     state.shareText =
       `イロオニで色感偏差値${d}【${title}】だった！\n`+
       `SCORE ${state.score.toLocaleString()} / LV${state.level} / 最大${state.maxCombo}コンボ\n`+
@@ -414,6 +432,7 @@
 
   window.share = async function(){
     const text = state.shareText;
+    if(typeof gtag === 'function') gtag('event', 'share_click');
     if(navigator.share){
       try{ await navigator.share({text}); return; }catch(e){}
     }
