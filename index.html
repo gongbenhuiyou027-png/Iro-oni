@@ -148,39 +148,29 @@
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
   /* ---------- フィーバー ---------- */
-  body.fever{background:#2b1e2b;}
+  body.fever{background:#121014;}
   .gridwrap{position:relative;}
-  #grid{transition:box-shadow .3s;border-radius:20px;}
+  #grid{transition:box-shadow .25s;border-radius:20px;}
   body.fever #grid{
-    box-shadow:0 0 0 3px rgba(255,158,203,.55), 0 0 34px rgba(255,158,203,.35);
+    box-shadow:0 0 0 2px rgba(255,255,255,.9), 0 0 40px rgba(255,255,255,.18);
   }
-  body.fever .timerbar i{background:linear-gradient(90deg,#ff9ecb,#ffd36b);}
-  body.fever .hud .val.combo{color:#ff9ecb;}
+  body.fever .timerbar i{background:#fff;}
+  body.fever .hud .val.combo{color:#fff;}
   .fever-slot{height:36px;display:flex;align-items:center;justify-content:center;margin-top:12px;}
-  .fever-pill{
-    display:none;align-items:center;gap:10px;
-    background:linear-gradient(90deg,#ff9ecb,#ffb3d9);
-    color:#fff;font-size:13px;font-weight:900;letter-spacing:.15em;
-    padding:8px 18px;border-radius:999px;
-    box-shadow:0 4px 18px rgba(255,158,203,.4);
+  .fever-tag{
+    display:none;flex-direction:column;align-items:center;gap:6px;
   }
-  body.fever .fever-pill{display:flex;animation:pillpop .3s ease;}
-  @keyframes pillpop{from{transform:scale(.7);opacity:0;}to{transform:scale(1);opacity:1;}}
-  .fever-pill .fbar{
-    width:70px;height:4px;border-radius:999px;
-    background:rgba(255,255,255,.35);overflow:hidden;
+  body.fever .fever-tag{display:flex;animation:tagin .25s ease;}
+  @keyframes tagin{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .fever-tag .ftext{
+    color:#fff;font-size:13px;font-weight:900;
+    letter-spacing:.55em;text-indent:.55em;
   }
-  .fever-pill .fbar i{
-    display:block;height:100%;background:#fff;
-    border-radius:999px;transform-origin:left;
+  .fever-tag .fbar{
+    width:120px;height:2px;background:rgba(255,255,255,.2);overflow:hidden;
   }
-  .sparkle{
-    position:absolute;pointer-events:none;font-size:16px;z-index:5;
-    animation:floatup .65s ease-out forwards;
-  }
-  @keyframes floatup{
-    from{opacity:1;transform:translate(-50%,-50%) scale(.7);}
-    to{opacity:0;transform:translate(-50%,calc(-50% - 44px)) scale(1.2);}
+  .fever-tag .fbar i{
+    display:block;height:100%;background:#fff;transform-origin:left;
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -216,7 +206,10 @@
       <div id="grid"></div>
     </div>
     <div class="fever-slot">
-      <div class="fever-pill">🌸 FEVER ×2 <span class="fbar"><i id="fbar"></i></span></div>
+      <div class="fever-tag">
+        <span class="ftext">FEVER ×2</span>
+        <span class="fbar"><i id="fbar"></i></span>
+      </div>
     </div>
     <div class="reveal-msg" id="reveal-msg"></div>
   </section>
@@ -294,8 +287,6 @@
 
   /* ----- フィーバー ----- */
   const FEVER_SEC = 5, FEVER_EVERY = 5;
-  const EMOJI = ['🌸','💖','✨','⭐','🎀'];
-  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function inFever(){ return performance.now() < state.feverUntil; }
   function startFever(){
     state.feverUntil = performance.now() + FEVER_SEC*1000;
@@ -305,21 +296,6 @@
     state.feverUntil = 0;
     document.body.classList.remove('fever');
   }
-  function spawnSparkles(el, n){
-    if(reduceMotion || !el) return;
-    const wrap = document.querySelector('.gridwrap');
-    const w = wrap.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    for(let i=0;i<n;i++){
-      const s = document.createElement('span');
-      s.className = 'sparkle';
-      s.textContent = EMOJI[(Math.random()*EMOJI.length)|0];
-      s.style.left = (r.left - w.left + r.width*(0.25 + Math.random()*0.5)) + 'px';
-      s.style.top  = (r.top  - w.top  + r.height*(0.25 + Math.random()*0.5)) + 'px';
-      wrap.appendChild(s);
-      setTimeout(()=>s.remove(), 700);
-    }
-  }
 
   /* ----- 入力 ----- */
   function tap(i, el){
@@ -328,15 +304,9 @@
       state.combo++;
       state.maxCombo = Math.max(state.maxCombo, state.combo);
       let mult = 1 + Math.min(state.combo,10)*0.2;
-      if(inFever()){
-        mult *= 2;
-        spawnSparkles(el, 2);
-      }
+      if(inFever()) mult *= 2;
       state.score += Math.round(100 * state.level * mult);
-      if(state.combo % FEVER_EVERY === 0){
-        startFever();
-        spawnSparkles(el, 5);
-      }
+      if(state.combo % FEVER_EVERY === 0) startFever();
       state.level++;
       buildLevel();
     }else{
