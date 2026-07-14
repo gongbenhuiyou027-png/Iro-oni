@@ -218,8 +218,8 @@
 
   /* ----- 色生成 ----- */
   function levelSpec(lv){
-    const size = Math.min(2 + Math.floor((lv-1)/3), 6);      // 2x2 → 6x6
-    const diff = Math.max(28 - lv*1.6, 4);                    // 明度差がどんどん縮む
+    const size = Math.min(2 + Math.floor((lv-1)/4), 5);       // 2x2 → 5x5（緩やかに拡大）
+    const diff = 8 + 22 * Math.exp(-(lv-1)/10);               // 色差は緩やかに減衰、下限8で見える範囲を維持
     return {size, diff};
   }
   function hsl(h,s,l){return `hsl(${h} ${s}% ${l}%)`;}
