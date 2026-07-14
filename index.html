@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>イロオニ — 30秒色感バトル</title>
+<meta name="description" content="30秒で色感偏差値を測定。1枚だけ違う色をタップし続けろ。あなたの色感、何レベル？">
+
+<!-- OGP -->
+<meta property="og:title" content="イロオニ — 30秒色感バトル">
+<meta property="og:description" content="1枚だけ違う色をタップし続けろ。30秒であなたの色感偏差値を測定。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gongbenhuiyou027-png.github.io/Iro-oni/">
+<meta property="og:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="イロオニ — 30秒色感バトル">
+<meta name="twitter:description" content="1枚だけ違う色をタップし続けろ。あなたの色感偏差値は？">
+<meta name="twitter:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
+
+<style>
+  :root{
+    --bg:#1c1a20;
+    --panel:#26232c;
+    --ink:#f2eff5;
+    --sub:#9a93a6;
+    --accent:#e8b04b;
+    --danger:#e85a5a;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    transition:background .6s ease;
+  }
+  .app{width:min(92vw,440px);text-align:center;}
+
+  .brand{
+    font-size:13px;letter-spacing:.5em;color:var(--sub);
+    text-transform:uppercase;margin-bottom:8px;
+  }
+  h1{
+    font-size:clamp(44px,12vw,58px);
+    font-weight:900;letter-spacing:.08em;line-height:1.1;
+  }
+  h1 .oni{color:var(--accent);transition:color .4s;}
+  .btn{
+    display:inline-block;border:none;cursor:pointer;
+    font:inherit;font-weight:800;font-size:18px;letter-spacing:.15em;
+    color:#141217;background:var(--accent);
+    padding:16px 48px;border-radius:999px;
+    transition:transform .15s,background .4s,box-shadow .3s;
+    box-shadow:0 6px 24px color-mix(in srgb,var(--accent) 35%,transparent);
+  }
+  .btn:hover{transform:translateY(-2px);}
+  .btn:active{transform:scale(.96);}
+  .btn.ghost{
+    background:transparent;color:var(--ink);
+    border:1.5px solid #47424f;box-shadow:none;
+  }
+  .screen{display:none;animation:fadein .35s ease;}
+  .screen.active{display:block;}
+  @keyframes fadein{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+  /* ---------- タイトル ---------- */
+  .lead{color:var(--sub);font-size:15px;line-height:1.9;margin:20px 0 32px;}
+  .lead b{color:var(--ink);}
+  .bestline{margin-top:20px;font-size:13px;color:var(--sub);letter-spacing:.1em;}
+  .bestline b{color:var(--accent);font-size:16px;}
+
+  /* ---------- ゲーム ---------- */
+  .hud{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    margin-bottom:14px;
+  }
+  .hud .cell{text-align:left;}
+  .hud .cell:last-child{text-align:right;}
+  .hud .label{font-size:10px;letter-spacing:.25em;color:var(--sub);}
+  .hud .val{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;}
+  .hud .val.combo{color:var(--accent);transition:color .4s;}
+
+  .timerbar{
+    height:6px;border-radius:999px;background:#333039;
+    overflow:hidden;margin-bottom:18px;
+  }
+  .timerbar i{
+    display:block;height:100%;width:100%;
+    background:var(--accent);border-radius:999px;
+    transition:background .4s;
+    transform-origin:left;
+  }
+
+  #grid{
+    display:grid;gap:8px;
+    aspect-ratio:1;
+    touch-action:manipulation;
+  }
+  #grid button{
+    border:none;border-radius:14px;cursor:pointer;
+    transition:filter .1s;
+    outline:none;
+  }
+  #grid button:active{filter:brightness(1.08);}
+  #grid button.hit-outline{
+    box-shadow:0 0 0 3px var(--ink), 0 0 0 6px color-mix(in srgb,var(--ink) 30%,transparent);
+  }
+  .reveal-msg{
+    margin-top:16px;font-size:14px;color:var(--sub);
+    letter-spacing:.15em;min-height:20px;
+  }
+  .shake{animation:shake .3s;}
+  @keyframes shake{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-6px);}
+    75%{transform:translateX(6px);}
+  }
+
+  /* ---------- リザルト ---------- */
+  .dev-label{font-size:12px;letter-spacing:.3em;color:var(--sub);margin-bottom:4px;}
+  .dev-num{
+    font-size:clamp(72px,22vw,96px);font-weight:900;
+    color:var(--accent);line-height:1;
+    font-variant-numeric:tabular-nums;transition:color .4s;
+  }
+  .title-name{
+    display:inline-block;margin:10px 0 24px;
+    font-size:20px;font-weight:800;letter-spacing:.2em;
+    border:1.5px solid var(--accent);border-radius:999px;
+    padding:8px 26px;color:var(--accent);transition:all .4s;
+  }
+  .stats{
+    display:flex;justify-content:center;gap:28px;
+    margin-bottom:30px;font-variant-numeric:tabular-nums;
+  }
+  .stats .label{font-size:10px;letter-spacing:.25em;color:var(--sub);}
+  .stats .val{font-size:22px;font-weight:800;}
+  .btncol{display:flex;flex-direction:column;gap:12px;align-items:center;}
+
+  #toast{
+    position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#141217;font-size:13px;font-weight:700;
+    padding:10px 22px;border-radius:999px;opacity:0;
+    transition:all .3s;pointer-events:none;
+  }
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- タイトル画面 -->
+  <section class="screen active" id="scr-title">
+    <div class="brand">30 SEC COLOR BATTLE</div>
+    <h1>イロ<span class="oni">オニ</span></h1>
+    <p class="lead">
+      1枚だけ<b>色が違う</b>タイルをタップ。<br>
+      正解で加点、ミスで<b>時間ペナルティ</b>。<br>
+      30秒で色感偏差値を測定する。
+    </p>
+    <button class="btn" onclick="startGame()">はじめる</button>
+    <div class="bestline" id="bestline" hidden>BEST <b id="bestval">0</b></div>
+  </section>
+
+  <!-- ゲーム画面 -->
+  <section class="screen" id="scr-game">
+    <div class="hud">
+      <div class="cell"><div class="label">SCORE</div><div class="val" id="h-score">0</div></div>
+      <div class="cell"><div class="label">COMBO</div><div class="val combo" id="h-combo">0</div></div>
+      <div class="cell"><div class="label">TIME</div><div class="val" id="h-time">30.0</div></div>
+    </div>
+    <div class="timerbar"><i id="tbar"></i></div>
+    <div id="grid"></div>
+    <div class="reveal-msg" id="reveal-msg"></div>
+  </section>
+
+  <!-- リザルト画面 -->
+  <section class="screen" id="scr-result">
+    <div class="dev-label">色感偏差値</div>
+    <div class="dev-num" id="dev-num">50</div>
+    <div><span class="title-name" id="title-name">見習い</span></div>
+    <div class="stats">
+      <div><div class="label">SCORE</div><div class="val" id="r-score">0</div></div>
+      <div><div class="label">LEVEL</div><div class="val" id="r-lv">1</div></div>
+      <div><div class="label">MAX COMBO</div><div class="val" id="r-combo">0</div></div>
+    </div>
+    <div class="btncol">
+      <button class="btn" onclick="share()">結果をシェア</button>
+      <button class="btn ghost" onclick="startGame()">もう一回</button>
+    </div>
+    <div class="bestline" style="margin-top:24px">BEST <b id="bestval2">0</b></div>
+  </section>
+
+</div>
+<div id="toast">コピーしました</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const GAME_SEC = 30;
+  let best = Number(localStorage.getItem('irooni_best') || 0);
+
+  const state = {
+    running:false, score:0, combo:0, maxCombo:0, level:1,
+    timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
+  };
+
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $(id).classList.add('active');
+  }
+
+  /* ----- 色生成 ----- */
+  function levelSpec(lv){
+    const size = Math.min(2 + Math.floor((lv-1)/3), 6);      // 2x2 → 6x6
+    const diff = Math.max(28 - lv*1.6, 4);                    // 明度差がどんどん縮む
+    return {size, diff};
+  }
+  function hsl(h,s,l){return `hsl(${h} ${s}% ${l}%)`;}
+
+  function buildLevel(){
+    const {size, diff} = levelSpec(state.level);
+    const h = Math.floor(Math.random()*360);
+    const s = 45 + Math.random()*35;
+    const l = 38 + Math.random()*26;
+    const hueShift = (Math.random()<.5?-1:1) * Math.min(diff*.5, 8);
+    const lShift   = (l>55?-1:1) * diff*.55;
+
+    // UIアクセント色を出題色に連動させる（署名演出）
+    document.documentElement.style.setProperty('--accent', hsl(h, Math.min(s+15,90), 62));
+
+    const n = size*size;
+    state.answer = Math.floor(Math.random()*n);
+    const grid = $('grid');
+    grid.style.gridTemplateColumns = `repeat(${size},1fr)`;
+    grid.innerHTML = '';
+    for(let i=0;i<n;i++){
+      const b = document.createElement('button');
+      b.style.background = (i===state.answer)
+        ? hsl(h+hueShift, s, l+lShift)
+        : hsl(h, s, l);
+      b.addEventListener('pointerdown', ()=>tap(i), {passive:true});
+      grid.appendChild(b);
+    }
+  }
+
+  /* ----- 入力 ----- */
+  function tap(i){
+    if(!state.running) return;
+    if(i === state.answer){
+      state.combo++;
+      state.maxCombo = Math.max(state.maxCombo, state.combo);
+      const mult = 1 + Math.min(state.combo,10)*0.2;
+      state.score += Math.round(100 * state.level * mult);
+      state.level++;
+      buildLevel();
+    }else{
+      state.combo = 0;
+      state.timeLeft = Math.max(0, state.timeLeft - 2);
+      $('grid').classList.remove('shake');
+      void $('grid').offsetWidth;
+      $('grid').classList.add('shake');
+    }
+    paintHud();
+  }
+
+  /* ----- HUD ----- */
+  function paintHud(){
+    $('h-score').textContent = state.score.toLocaleString();
+    $('h-combo').textContent = state.combo;
+    $('h-time').textContent = state.timeLeft.toFixed(1);
+    $('tbar').style.transform = `scaleX(${state.timeLeft/GAME_SEC})`;
+  }
+
+  /* ----- ループ ----- */
+  function tick(t){
+    if(!state.running) return;
+    const dt = (t - state.lastTick)/1000;
+    state.lastTick = t;
+    state.timeLeft = Math.max(0, state.timeLeft - dt);
+    paintHud();
+    if(state.timeLeft <= 0){ endGame(); return; }
+    state.raf = requestAnimationFrame(tick);
+  }
+
+  /* ----- 開始/終了 ----- */
+  window.startGame = function(){
+    Object.assign(state,{
+      running:true, score:0, combo:0, maxCombo:0, level:1,
+      timeLeft:GAME_SEC,
+    });
+    $('reveal-msg').textContent = '';
+    show('scr-game');
+    buildLevel();
+    paintHud();
+    state.lastTick = performance.now();
+    state.raf = requestAnimationFrame(tick);
+  };
+
+  function endGame(){
+    state.running = false;
+    cancelAnimationFrame(state.raf);
+
+    // 2段階リベール：まず正解を控えめに示し、その後素の状態で見せる
+    const btns = $('grid').children;
+    if(btns[state.answer]){
+      btns[state.answer].classList.add('hit-outline');
+      $('reveal-msg').textContent = '正解はここ';
+    }
+    setTimeout(()=>{
+      if(btns[state.answer]) btns[state.answer].classList.remove('hit-outline');
+      $('reveal-msg').textContent = '違い、見える？';
+    }, 1500);
+    setTimeout(showResult, 3000);
+  }
+
+  function showResult(){
+    // 偏差値：スコアをロジスティックに写像（40〜80あたりに大半が収まる）
+    const dev = 30 + 50 / (1 + Math.exp(-(state.score - 6000)/3500));
+    const d = Math.floor(dev);
+    const titles = [
+      [75,'人間卒業'],[70,'染織職人'],[65,'色彩鑑定士'],
+      [60,'デザイナーの卵'],[55,'色感アリ'],[50,'ふつうの人'],
+      [45,'蛍光灯の下暮らし'],[0,'モノクロ生活'],
+    ];
+    const title = titles.find(([th])=>d>=th)[1];
+
+    $('dev-num').textContent = d;
+    $('title-name').textContent = title;
+    $('r-score').textContent = state.score.toLocaleString();
+    $('r-lv').textContent = state.level;
+    $('r-combo').textContent = state.maxCombo;
+
+    if(state.score > best){
+      best = state.score;
+      localStorage.setItem('irooni_best', best);
+    }
+    $('bestval').textContent = best.toLocaleString();
+    $('bestval2').textContent = best.toLocaleString();
+    $('bestline').hidden = false;
+
+    state.shareText =
+      `イロオニで色感偏差値${d}【${title}】だった！\n`+
+      `SCORE ${state.score.toLocaleString()} / LV${state.level} / 最大${state.maxCombo}コンボ\n`+
+      `https://gongbenhuiyou027-png.github.io/Iro-oni/\n#イロオニ`;
+    show('scr-result');
+  }
+
+  window.share = async function(){
+    const text = state.shareText;
+    if(navigator.share){
+      try{ await navigator.share({text}); return; }catch(e){}
+    }
+    try{
+      await navigator.clipboard.writeText(text);
+      const t = $('toast');
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'),1800);
+    }catch(e){}
+  };
+
+  // 起動時ベスト表示
+  if(best>0){
+    $('bestline').hidden = false;
+    $('bestval').textContent = best.toLocaleString();
+  }
+})();
+</script>
+</body>
+</html>
