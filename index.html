@@ -108,7 +108,7 @@
     box-shadow:0 0 0 3px var(--ink), 0 0 0 6px color-mix(in srgb,var(--ink) 30%,transparent);
   }
   .reveal-msg{
-    margin-top:16px;font-size:14px;color:var(--sub);
+    margin-top:4px;font-size:14px;color:var(--sub);
     letter-spacing:.15em;min-height:20px;
   }
   .shake{animation:shake .3s;}
@@ -150,28 +150,37 @@
   /* ---------- フィーバー ---------- */
   body.fever{background:#2b1e2b;}
   .gridwrap{position:relative;}
-  .fever-badge{
-    position:absolute;top:-36px;left:50%;
-    transform:translateX(-50%);
-    font-size:15px;font-weight:900;letter-spacing:.2em;
-    color:#ff9ecb;white-space:nowrap;display:none;
-    text-shadow:0 0 14px rgba(255,158,203,.5);
+  #grid{transition:box-shadow .3s;border-radius:20px;}
+  body.fever #grid{
+    box-shadow:0 0 0 3px rgba(255,158,203,.55), 0 0 34px rgba(255,158,203,.35);
   }
-  body.fever .fever-badge{display:block;animation:feverbounce .45s ease infinite alternate;}
-  @keyframes feverbounce{
-    from{transform:translateX(-50%) scale(1) rotate(-2deg);}
-    to{transform:translateX(-50%) scale(1.14) rotate(2deg);}
-  }
-  body.fever #grid button{border-radius:22px;}
   body.fever .timerbar i{background:linear-gradient(90deg,#ff9ecb,#ffd36b);}
   body.fever .hud .val.combo{color:#ff9ecb;}
+  .fever-slot{height:36px;display:flex;align-items:center;justify-content:center;margin-top:12px;}
+  .fever-pill{
+    display:none;align-items:center;gap:10px;
+    background:linear-gradient(90deg,#ff9ecb,#ffb3d9);
+    color:#fff;font-size:13px;font-weight:900;letter-spacing:.15em;
+    padding:8px 18px;border-radius:999px;
+    box-shadow:0 4px 18px rgba(255,158,203,.4);
+  }
+  body.fever .fever-pill{display:flex;animation:pillpop .3s ease;}
+  @keyframes pillpop{from{transform:scale(.7);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .fever-pill .fbar{
+    width:70px;height:4px;border-radius:999px;
+    background:rgba(255,255,255,.35);overflow:hidden;
+  }
+  .fever-pill .fbar i{
+    display:block;height:100%;background:#fff;
+    border-radius:999px;transform-origin:left;
+  }
   .sparkle{
-    position:absolute;pointer-events:none;font-size:22px;z-index:5;
-    animation:floatup 1.1s ease-out forwards;
+    position:absolute;pointer-events:none;font-size:16px;z-index:5;
+    animation:floatup .65s ease-out forwards;
   }
   @keyframes floatup{
-    from{opacity:1;transform:translateY(0) scale(.6) rotate(-10deg);}
-    to{opacity:0;transform:translateY(-90px) scale(1.35) rotate(14deg);}
+    from{opacity:1;transform:translate(-50%,-50%) scale(.7);}
+    to{opacity:0;transform:translate(-50%,calc(-50% - 44px)) scale(1.2);}
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -204,8 +213,10 @@
     </div>
     <div class="timerbar"><i id="tbar"></i></div>
     <div class="gridwrap">
-      <div class="fever-badge">🌸 FEVER ×2 🌸</div>
       <div id="grid"></div>
+    </div>
+    <div class="fever-slot">
+      <div class="fever-pill">🌸 FEVER ×2 <span class="fbar"><i id="fbar"></i></span></div>
     </div>
     <div class="reveal-msg" id="reveal-msg"></div>
   </section>
@@ -276,7 +287,7 @@
       b.style.background = (i===state.answer)
         ? hsl(h+hueShift, s, l+lShift)
         : hsl(h, s, l);
-      b.addEventListener('pointerdown', ()=>tap(i), {passive:true});
+      b.addEventListener('pointerdown', ()=>tap(i, b), {passive:true});
       grid.appendChild(b);
     }
   }
@@ -284,30 +295,34 @@
   /* ----- フィーバー ----- */
   const FEVER_SEC = 5, FEVER_EVERY = 5;
   const EMOJI = ['🌸','💖','✨','⭐','🎀'];
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   function inFever(){ return performance.now() < state.feverUntil; }
   function startFever(){
     state.feverUntil = performance.now() + FEVER_SEC*1000;
     document.body.classList.add('fever');
-    for(let i=0;i<8;i++) setTimeout(spawnSparkle, i*70);
   }
   function stopFever(){
     state.feverUntil = 0;
     document.body.classList.remove('fever');
   }
-  function spawnSparkle(){
+  function spawnSparkles(el, n){
+    if(reduceMotion || !el) return;
     const wrap = document.querySelector('.gridwrap');
-    if(!wrap) return;
-    const s = document.createElement('span');
-    s.className = 'sparkle';
-    s.textContent = EMOJI[Math.floor(Math.random()*EMOJI.length)];
-    s.style.left = (5 + Math.random()*90) + '%';
-    s.style.top  = (55 + Math.random()*40) + '%';
-    wrap.appendChild(s);
-    setTimeout(()=>s.remove(), 1200);
+    const w = wrap.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    for(let i=0;i<n;i++){
+      const s = document.createElement('span');
+      s.className = 'sparkle';
+      s.textContent = EMOJI[(Math.random()*EMOJI.length)|0];
+      s.style.left = (r.left - w.left + r.width*(0.25 + Math.random()*0.5)) + 'px';
+      s.style.top  = (r.top  - w.top  + r.height*(0.25 + Math.random()*0.5)) + 'px';
+      wrap.appendChild(s);
+      setTimeout(()=>s.remove(), 700);
+    }
   }
 
   /* ----- 入力 ----- */
-  function tap(i){
+  function tap(i, el){
     if(!state.running) return;
     if(i === state.answer){
       state.combo++;
@@ -315,10 +330,13 @@
       let mult = 1 + Math.min(state.combo,10)*0.2;
       if(inFever()){
         mult *= 2;
-        for(let k=0;k<3;k++) setTimeout(spawnSparkle, k*60);
+        spawnSparkles(el, 2);
       }
       state.score += Math.round(100 * state.level * mult);
-      if(state.combo % FEVER_EVERY === 0) startFever();
+      if(state.combo % FEVER_EVERY === 0){
+        startFever();
+        spawnSparkles(el, 5);
+      }
       state.level++;
       buildLevel();
     }else{
@@ -346,7 +364,13 @@
     const dt = (t - state.lastTick)/1000;
     state.lastTick = t;
     state.timeLeft = Math.max(0, state.timeLeft - dt);
-    if(state.feverUntil && !inFever()) stopFever();
+    if(state.feverUntil){
+      if(!inFever()){ stopFever(); }
+      else{
+        const rem = (state.feverUntil - t) / (FEVER_SEC*1000);
+        $('fbar').style.transform = `scaleX(${Math.max(0,rem)})`;
+      }
+    }
     paintHud();
     if(state.timeLeft <= 0){ endGame(); return; }
     state.raf = requestAnimationFrame(tick);
