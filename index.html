@@ -148,6 +148,47 @@
   .stats .val{font-size:22px;font-weight:800;}
   .btncol{display:flex;flex-direction:column;gap:12px;align-items:center;}
 
+  /* ---------- ランキング ---------- */
+  .rank-list{
+    list-style:none;text-align:left;
+    max-height:52vh;overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    margin-top:6px;
+  }
+  .rank-list li{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 14px;border-radius:14px;
+    background:var(--panel);margin-bottom:8px;
+    font-variant-numeric:tabular-nums;
+    transition:background .4s;
+  }
+  .rank-list li.me{
+    box-shadow:0 0 0 1.5px var(--accent);
+    background:color-mix(in srgb,var(--accent) 12%,var(--panel));
+  }
+  .rank-list .pos{
+    font-size:18px;font-weight:900;color:var(--sub);
+    width:28px;text-align:center;flex:none;
+  }
+  .rank-list li:nth-child(1) .pos{color:var(--accent);}
+  .rank-list li:nth-child(2) .pos,
+  .rank-list li:nth-child(3) .pos{color:var(--ink);}
+  .rank-list .rmain{flex:1;min-width:0;}
+  .rank-list .rscore{font-size:19px;font-weight:900;}
+  .rank-list .rmeta{font-size:11px;color:var(--sub);letter-spacing:.05em;margin-top:2px;}
+  .rank-list .rdev{
+    flex:none;text-align:right;
+    font-size:22px;font-weight:900;color:var(--accent);
+    transition:color .4s;
+  }
+  .rank-list .rdev small{display:block;font-size:9px;letter-spacing:.2em;color:var(--sub);}
+  .rank-empty{color:var(--sub);font-size:15px;line-height:1.9;margin:34px 0 6px;}
+  .rank-banner{
+    margin-bottom:18px;font-size:14px;font-weight:800;letter-spacing:.12em;
+    color:var(--accent);transition:color .4s;
+  }
+  .rank-banner b{font-size:20px;}
+
   #toast{
     position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);
     background:var(--ink);color:#141217;font-size:13px;font-weight:700;
@@ -199,7 +240,10 @@
       正解で加点、ミスで<b>時間ペナルティ</b>。<br>
       30秒で色感偏差値を測定する。
     </p>
-    <button class="btn" onclick="startGame()">はじめる</button>
+    <div class="btncol" style="margin-top:4px">
+      <button class="btn" onclick="startGame()">はじめる</button>
+      <button class="btn ghost" onclick="openRanking('scr-title')">ランキング</button>
+    </div>
     <div class="bestline" id="bestline" hidden>BEST <b id="bestval">0</b></div>
   </section>
 
@@ -233,11 +277,25 @@
       <div><div class="label">LEVEL</div><div class="val" id="r-lv">1</div></div>
       <div><div class="label">MAX COMBO</div><div class="val" id="r-combo">0</div></div>
     </div>
+    <div class="rank-banner" id="rank-banner" hidden></div>
     <div class="btncol">
       <button class="btn" onclick="share()">結果をシェア</button>
+      <button class="btn ghost" onclick="openRanking('scr-result')">ランキングを見る</button>
       <button class="btn ghost" onclick="startGame()">もう一回</button>
     </div>
     <div class="bestline" style="margin-top:24px">BEST <b id="bestval2">0</b></div>
+  </section>
+
+  <!-- ランキング画面 -->
+  <section class="screen" id="scr-ranking">
+    <div class="brand">TOP 10 RANKING</div>
+    <h1 style="font-size:clamp(30px,9vw,40px);margin-bottom:8px">ランキング</h1>
+    <ol class="rank-list" id="rank-list"></ol>
+    <p class="rank-empty" id="rank-empty" hidden>まだ記録がありません。<br>プレイして名を刻もう。</p>
+    <div class="btncol" style="margin-top:26px">
+      <button class="btn" onclick="startGame()">プレイする</button>
+      <button class="btn ghost" id="rank-back">もどる</button>
+    </div>
   </section>
 
 </div>
@@ -249,10 +307,64 @@
   const GAME_SEC = 30;
   let best = Number(localStorage.getItem('irooni_best') || 0);
 
+  /* ----- ランキング（ローカル保存・トップ10） ----- */
+  const RANK_KEY = 'irooni_ranking', RANK_MAX = 10;
+  function loadRanking(){
+    try{
+      const arr = JSON.parse(localStorage.getItem(RANK_KEY) || '[]');
+      return Array.isArray(arr) ? arr : [];
+    }catch(e){ return []; }
+  }
+  // スコアをランキングに登録。ランクイン順位（1始まり）を返す。圏外なら -1。
+  function saveRanking(entry){
+    const list = loadRanking();
+    list.push(entry);
+    list.sort((a,b)=> b.score - a.score);
+    const trimmed = list.slice(0, RANK_MAX);
+    localStorage.setItem(RANK_KEY, JSON.stringify(trimmed));
+    const pos = trimmed.indexOf(entry);
+    return pos === -1 ? -1 : pos + 1;
+  }
+  function fmtDate(ts){
+    const d = new Date(ts);
+    const p = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}`;
+  }
+  function renderRanking(highlightTs){
+    const list = loadRanking();
+    const ol = $('rank-list'), empty = $('rank-empty');
+    ol.innerHTML = '';
+    if(list.length === 0){
+      empty.hidden = false;
+      ol.hidden = true;
+      return;
+    }
+    empty.hidden = true;
+    ol.hidden = false;
+    list.forEach((e, i) => {
+      const li = document.createElement('li');
+      if(highlightTs && e.ts === highlightTs) li.classList.add('me');
+      li.innerHTML =
+        `<span class="pos">${i+1}</span>`+
+        `<span class="rmain">`+
+          `<span class="rscore">${Number(e.score).toLocaleString()}</span>`+
+          `<span class="rmeta">${e.title} ・ LV${e.level} ・ 最大${e.combo}コンボ ・ ${fmtDate(e.ts)}</span>`+
+        `</span>`+
+        `<span class="rdev">${e.dev}<small>偏差値</small></span>`;
+      ol.appendChild(li);
+    });
+  }
+  window.openRanking = function(from){
+    if($('rank-back')) $('rank-back').onclick = () => show(from || 'scr-title');
+    if(typeof gtag === 'function') gtag('event', 'view_ranking', {from: from || 'scr-title'});
+    renderRanking(state.lastTs);
+    show('scr-ranking');
+  };
+
   const state = {
     running:false, score:0, combo:0, maxCombo:0, level:1,
     timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
-    feverUntil:0,
+    feverUntil:0, lastTs:0, lastRank:-1,
   };
 
   function show(id){
@@ -414,6 +526,23 @@
     $('bestval').textContent = best.toLocaleString();
     $('bestval2').textContent = best.toLocaleString();
     $('bestline').hidden = false;
+
+    // ランキング登録
+    state.lastTs = Date.now();
+    state.lastRank = saveRanking({
+      ts: state.lastTs, score: state.score, level: state.level,
+      combo: state.maxCombo, dev: d, title,
+    });
+    const banner = $('rank-banner');
+    if(state.lastRank === 1){
+      banner.innerHTML = '🏆 自己ベスト更新！ ランキング <b>1</b> 位';
+      banner.hidden = false;
+    }else if(state.lastRank > 0){
+      banner.innerHTML = `ランキング <b>${state.lastRank}</b> 位にランクイン！`;
+      banner.hidden = false;
+    }else{
+      banner.hidden = true;
+    }
 
     if(typeof gtag === 'function') gtag('event', 'game_end', {
       score: state.score,
