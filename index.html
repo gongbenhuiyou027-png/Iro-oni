@@ -189,6 +189,40 @@
   }
   .rank-banner b{font-size:20px;}
 
+  /* ---------- 世界ランキング ---------- */
+  .rtabs{
+    display:flex;justify-content:center;gap:8px;margin:14px 0 12px;
+  }
+  .rtabs button{
+    border:1.5px solid #47424f;background:transparent;color:var(--sub);
+    font:inherit;font-size:13px;font-weight:800;letter-spacing:.15em;
+    padding:8px 22px;border-radius:999px;cursor:pointer;
+    transition:all .25s;
+  }
+  .rtabs button.on{
+    border-color:var(--accent);color:var(--accent);
+    background:color-mix(in srgb,var(--accent) 10%,transparent);
+  }
+  .rank-loading{color:var(--sub);font-size:14px;letter-spacing:.15em;margin:34px 0 6px;}
+  .gsubmit{
+    display:flex;flex-direction:column;gap:10px;align-items:center;
+    margin-bottom:22px;
+  }
+  .gsubmit input{
+    width:min(100%,260px);text-align:center;
+    font:inherit;font-size:15px;font-weight:700;color:var(--ink);
+    background:var(--panel);border:1.5px solid #47424f;border-radius:999px;
+    padding:11px 18px;outline:none;transition:border-color .25s;
+  }
+  .gsubmit input:focus{border-color:var(--accent);}
+  .btn.gbtn{font-size:15px;padding:12px 34px;}
+  .btn.gbtn:disabled{opacity:.45;cursor:default;transform:none;}
+  .gmsg{
+    min-height:18px;font-size:13px;font-weight:800;
+    letter-spacing:.1em;color:var(--accent);transition:color .4s;
+  }
+  .gmsg.err{color:var(--danger);}
+
   #toast{
     position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);
     background:var(--ink);color:#141217;font-size:13px;font-weight:700;
@@ -278,6 +312,11 @@
       <div><div class="label">MAX COMBO</div><div class="val" id="r-combo">0</div></div>
     </div>
     <div class="rank-banner" id="rank-banner" hidden></div>
+    <div class="gsubmit" id="gsubmit" hidden>
+      <input id="gname" maxlength="10" placeholder="なまえ（10文字まで）" autocomplete="nickname">
+      <button class="btn gbtn" id="gsend" onclick="submitGlobal()">世界ランキングに登録</button>
+      <div class="gmsg" id="gmsg"></div>
+    </div>
     <div class="btncol">
       <button class="btn" onclick="share()">結果をシェア</button>
       <button class="btn ghost" onclick="openRanking('scr-result')">ランキングを見る</button>
@@ -290,6 +329,10 @@
   <section class="screen" id="scr-ranking">
     <div class="brand">TOP 10 RANKING</div>
     <h1 style="font-size:clamp(30px,9vw,40px);margin-bottom:8px">ランキング</h1>
+    <div class="rtabs" id="rtabs" hidden>
+      <button id="tab-local" class="on" onclick="rankTab('local')">この端末</button>
+      <button id="tab-world" onclick="rankTab('world')">世界</button>
+    </div>
     <ol class="rank-list" id="rank-list"></ol>
     <p class="rank-empty" id="rank-empty" hidden>まだ記録がありません。<br>プレイして名を刻もう。</p>
     <div class="btncol" style="margin-top:26px">
@@ -301,6 +344,11 @@
 </div>
 <div id="toast">コピーしました</div>
 
+<script>
+  // ★ 世界ランキング設定：Supabaseプロジェクト作成後にURLとanonキーを入れる（SUPABASE_SETUP.md参照）
+  // 空のままなら世界ランキングは非表示になり、ローカルランキングのみ動作する。
+  window.IROONI_SUPABASE = { url: '', anonKey: '' };
+</script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -357,14 +405,119 @@
   window.openRanking = function(from){
     if($('rank-back')) $('rank-back').onclick = () => show(from || 'scr-title');
     if(typeof gtag === 'function') gtag('event', 'view_ranking', {from: from || 'scr-title'});
-    renderRanking(state.lastTs);
+    $('rtabs').hidden = !sbEnabled();
+    rankTab('local');
     show('scr-ranking');
+  };
+
+  /* ----- 世界ランキング（Supabase REST） ----- */
+  const sbConf = () => window.IROONI_SUPABASE || {};
+  const sbEnabled = () => !!(sbConf().url && sbConf().anonKey);
+  function sbFetch(path, opts = {}){
+    const {url, anonKey} = sbConf();
+    return fetch(`${url}/rest/v1/${path}`, {
+      ...opts,
+      headers:{
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`,
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+      },
+    });
+  }
+  const esc = s => String(s).replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  window.rankTab = function(which){
+    $('tab-local').classList.toggle('on', which === 'local');
+    $('tab-world').classList.toggle('on', which === 'world');
+    if(which === 'local'){ renderRanking(state.lastTs); }
+    else{ renderWorld(); }
+  };
+
+  async function renderWorld(){
+    const ol = $('rank-list'), empty = $('rank-empty');
+    empty.hidden = true;
+    ol.hidden = false;
+    ol.innerHTML = '<p class="rank-loading">読み込み中…</p>';
+    try{
+      const res = await sbFetch(
+        'scores?select=name,score,level,combo,dev,title&order=score.desc,created_at.asc&limit=10');
+      if(!res.ok) throw new Error(res.status);
+      const list = await res.json();
+      if(!$('tab-world').classList.contains('on')) return; // 取得中にタブが切り替わった
+      ol.innerHTML = '';
+      if(list.length === 0){
+        ol.hidden = true;
+        empty.hidden = false;
+        return;
+      }
+      list.forEach((e, i) => {
+        const li = document.createElement('li');
+        li.innerHTML =
+          `<span class="pos">${i+1}</span>`+
+          `<span class="rmain">`+
+            `<span class="rscore">${Number(e.score).toLocaleString()}</span>`+
+            `<span class="rmeta">${esc(e.name)} ・ ${esc(e.title)} ・ LV${Number(e.level)} ・ 最大${Number(e.combo)}コンボ</span>`+
+          `</span>`+
+          `<span class="rdev">${Number(e.dev)}<small>偏差値</small></span>`;
+        ol.appendChild(li);
+      });
+    }catch(err){
+      if(!$('tab-world').classList.contains('on')) return;
+      ol.innerHTML = '<p class="rank-loading">取得できませんでした。通信環境を確認してね。</p>';
+    }
+  }
+
+  window.submitGlobal = async function(){
+    if(!sbEnabled() || state.submitted) return;
+    const name = $('gname').value.trim().slice(0, 10);
+    const msg = $('gmsg');
+    if(!name){
+      msg.textContent = 'なまえを入れてね';
+      msg.classList.add('err');
+      return;
+    }
+    msg.classList.remove('err');
+    msg.textContent = '送信中…';
+    $('gsend').disabled = true;
+    localStorage.setItem('irooni_name', name);
+    const entry = state.lastEntry;
+    try{
+      const res = await sbFetch('scores', {
+        method:'POST',
+        body: JSON.stringify({
+          name, score: entry.score, level: entry.level,
+          combo: entry.combo, dev: entry.dev, title: entry.title,
+        }),
+      });
+      if(!res.ok) throw new Error(res.status);
+      state.submitted = true;
+      // 自分より上のスコア数から世界順位を出す
+      let rankText = '登録しました！';
+      try{
+        const cr = await sbFetch(`scores?select=id&score=gt.${entry.score}`, {
+          method:'HEAD',
+          headers:{'Prefer':'count=exact','Range':'0-0'},
+        });
+        const total = cr.headers.get('content-range');
+        if(total && total.includes('/')){
+          rankText = `世界${Number(total.split('/')[1]) + 1}位にランクイン！`;
+        }
+      }catch(e){}
+      msg.textContent = rankText;
+      if(typeof gtag === 'function') gtag('event', 'submit_global_score', {score: entry.score});
+    }catch(err){
+      msg.textContent = '送信に失敗しました。もう一度試してね。';
+      msg.classList.add('err');
+      $('gsend').disabled = false;
+    }
   };
 
   const state = {
     running:false, score:0, combo:0, maxCombo:0, level:1,
     timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
-    feverUntil:0, lastTs:0, lastRank:-1,
+    feverUntil:0, lastTs:0, lastRank:-1, lastEntry:null, submitted:false,
   };
 
   function show(id){
@@ -529,10 +682,21 @@
 
     // ランキング登録
     state.lastTs = Date.now();
-    state.lastRank = saveRanking({
+    state.lastEntry = {
       ts: state.lastTs, score: state.score, level: state.level,
       combo: state.maxCombo, dev: d, title,
-    });
+    };
+    state.lastRank = saveRanking(state.lastEntry);
+
+    // 世界ランキング投稿フォーム（Supabase設定時のみ）
+    state.submitted = false;
+    $('gsubmit').hidden = !sbEnabled();
+    if(sbEnabled()){
+      $('gname').value = localStorage.getItem('irooni_name') || '';
+      $('gsend').disabled = false;
+      $('gmsg').textContent = '';
+      $('gmsg').classList.remove('err');
+    }
     const banner = $('rank-banner');
     if(state.lastRank === 1){
       banner.innerHTML = '🏆 自己ベスト更新！ ランキング <b>1</b> 位';
