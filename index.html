@@ -175,7 +175,16 @@
   .rank-list li:nth-child(3) .pos{color:var(--ink);}
   .rank-list .rmain{flex:1;min-width:0;}
   .rank-list .rscore{font-size:19px;font-weight:900;}
-  .rank-list .rmeta{font-size:11px;color:var(--sub);letter-spacing:.05em;margin-top:2px;}
+  .rank-list .rname{
+    display:block;font-size:18px;font-weight:900;color:var(--ink);
+    letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .rank-list .rdev.rpts{color:var(--ink);font-size:19px;}
+  .rank-list li:nth-child(1) .rname{color:var(--accent);transition:color .4s;}
+  .rank-list .rmeta{
+    display:block;font-size:11px;color:var(--sub);letter-spacing:.05em;margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
   .rank-list .rdev{
     flex:none;text-align:right;
     font-size:22px;font-weight:900;color:var(--accent);
@@ -461,10 +470,10 @@
         li.innerHTML =
           `<span class="pos">${i+1}</span>`+
           `<span class="rmain">`+
-            `<span class="rscore">${Number(e.score).toLocaleString()}</span>`+
-            `<span class="rmeta">${esc(e.name)} ・ ${esc(e.title)} ・ LV${Number(e.level)} ・ 最大${Number(e.combo)}コンボ</span>`+
+            `<span class="rname">${esc(e.name)}</span>`+
+            `<span class="rmeta">偏差値${Number(e.dev)} ・ ${esc(e.title)} ・ LV${Number(e.level)} ・ 最大${Number(e.combo)}コンボ</span>`+
           `</span>`+
-          `<span class="rdev">${Number(e.dev)}<small>偏差値</small></span>`;
+          `<span class="rdev rpts">${Number(e.score).toLocaleString()}<small>SCORE</small></span>`;
         ol.appendChild(li);
       });
     }catch(err){
