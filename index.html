@@ -345,9 +345,13 @@
 <div id="toast">コピーしました</div>
 
 <script>
-  // ★ 世界ランキング設定：Supabaseプロジェクト作成後にURLとanonキーを入れる（SUPABASE_SETUP.md参照）
-  // 空のままなら世界ランキングは非表示になり、ローカルランキングのみ動作する。
-  window.IROONI_SUPABASE = { url: '', anonKey: '' };
+  // ★ 世界ランキング設定（SUPABASE_SETUP.md参照）
+  // anonキーは公開前提のキー（RLSでスコアの登録・閲覧のみ許可）。
+  // 空にすると世界ランキングは非表示になり、ローカルランキングのみ動作する。
+  window.IROONI_SUPABASE = {
+    url: 'https://uiqjvejmsrxocggoiddv.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpcWp2ZWptc3J4b2NnZ29pZGR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzA0NTcsImV4cCI6MjA5OTYwNjQ1N30.0AVvMa7xQXXAXfgRtavFGEyk-sBRBeUyLrbA-knhIYw',
+  };
 </script>
 <script>
 (() => {
