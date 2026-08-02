@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>イロオニ — 30秒色感バトル</title>
-<meta name="description" content="30秒で色感偏差値を測定。1枚だけ違う色をタップし続けろ。あなたの色感、何レベル？">
+<title>イロオニ — エンドレス色感バトル</title>
+<meta name="description" content="1枚だけ違う色をタップし続けろ。迫るオニに飲まれるまで終わらない、エンドレス色感バトル。">
 
 <!-- OGP -->
-<meta property="og:title" content="イロオニ — 30秒色感バトル">
-<meta property="og:description" content="1枚だけ違う色をタップし続けろ。30秒であなたの色感偏差値を測定。">
+<meta property="og:title" content="イロオニ — エンドレス色感バトル">
+<meta property="og:description" content="1枚だけ違う色をタップし続けろ。オニに飲まれるまで、どこまでも。">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gongbenhuiyou027-png.github.io/Iro-oni/">
 <meta property="og:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="イロオニ — 30秒色感バトル">
+<meta name="twitter:title" content="イロオニ — エンドレス色感バトル">
 <meta name="twitter:description" content="1枚だけ違う色をタップし続けろ。あなたの色感偏差値は？">
 <meta name="twitter:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
 
@@ -45,7 +45,7 @@
     overflow:hidden;
     transition:background .6s ease;
   }
-  .app{width:min(92vw,440px);text-align:center;}
+  .app{width:min(92vw,440px);text-align:center;position:relative;z-index:1;}
 
   .brand{
     font-size:13px;letter-spacing:.5em;color:var(--sub);
@@ -106,6 +106,9 @@
     display:grid;gap:8px;
     aspect-ratio:1;
     touch-action:manipulation;
+    /* 盤面は不透明にして、鬼の闇がタイルの色に一切かからないようにする
+       （かかると同じ色でも位置で違って見えてしまい問題が成立しない） */
+    background:var(--bg);
   }
   #grid button{
     border:none;border-radius:14px;cursor:pointer;
@@ -141,7 +144,7 @@
     padding:8px 26px;color:var(--accent);transition:all .4s;
   }
   .stats{
-    display:flex;justify-content:center;gap:28px;
+    display:flex;justify-content:center;flex-wrap:wrap;gap:14px 20px;
     margin-bottom:30px;font-variant-numeric:tabular-nums;
   }
   .stats .label{font-size:10px;letter-spacing:.25em;color:var(--sub);}
@@ -322,6 +325,45 @@
     100%{opacity:0;transform:translate(-50%,-95%) scale(.95);}
   }
 
+  /* オニ：残り時間が減るほど、盤面の外側から闇が締め上げてくる。
+     盤面自体は不透明なので、色の比較には一切影響しない。 */
+  /* --oni は「透明でいられる半径」。盤面の四隅までの距離を下回らないようJSが計算するので、
+     闇が盤面にかかることはない（かかると同じ色が位置によって違って見えてしまう） */
+  #oni{
+    position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;
+    background:radial-gradient(circle at 50% 47%,
+      transparent var(--oni,3000px),
+      rgba(150,18,18,.42) calc(var(--oni,3000px) + 26px),
+      rgba(72,6,6,.82)   calc(var(--oni,3000px) + 95px),
+      rgba(0,0,0,.95)    calc(var(--oni,3000px) + 210px));
+    transition:opacity .5s;
+  }
+  body.playing #oni{opacity:1;}
+  body.hurry #oni{
+    background:radial-gradient(circle at 50% 47%,
+      transparent var(--oni,3000px),
+      rgba(226,32,32,.62) calc(var(--oni,3000px) + 18px),
+      rgba(96,6,6,.88)    calc(var(--oni,3000px) + 80px),
+      rgba(0,0,0,.97)     calc(var(--oni,3000px) + 190px));
+    animation:onibreath .85s ease-in-out infinite;
+  }
+  @keyframes onibreath{
+    0%,100%{opacity:1;}
+    50%{opacity:.82;}
+  }
+  #oni.push{animation:onipush .4s ease-out;}
+  @keyframes onipush{
+    0%{opacity:1;}
+    25%{opacity:.3;}
+    100%{opacity:1;}
+  }
+  /* 時間回復の手応え */
+  #h-time.gain{animation:timegain .45s ease-out;}
+  @keyframes timegain{
+    0%{color:var(--accent);transform:scale(1.22);}
+    100%{color:inherit;transform:scale(1);}
+  }
+
   /* 変則ラウンドの告知 */
   #roundtag{
     position:absolute;left:50%;top:50%;
@@ -371,6 +413,7 @@
 </style>
 </head>
 <body>
+<div id="oni" aria-hidden="true"></div>
 <button id="restart" onclick="startGame()" aria-label="最初からやり直す" title="やり直す（R）">
   <span class="ricon">↻</span><span class="rlabel">やり直す</span>
 </button>
@@ -379,12 +422,12 @@
 
   <!-- タイトル画面 -->
   <section class="screen active" id="scr-title">
-    <div class="brand">30 SEC COLOR BATTLE</div>
+    <div class="brand">ENDLESS COLOR CHASE</div>
     <h1>イロ<span class="oni">オニ</span></h1>
     <p class="lead">
       1枚だけ<b>色が違う</b>タイルをタップ。<br>
-      正解で加点、ミスで<b>時間ペナルティ</b>。<br>
-      30秒で色感偏差値を測定する。
+      正解すると<b>時間が回復</b>、ミスで−2秒。<br>
+      迫りくる<b>オニ</b>に飲まれるまで、どこまでも。
     </p>
     <div class="btncol" style="margin-top:4px">
       <button class="btn" onclick="startGame()">はじめる</button>
@@ -422,6 +465,7 @@
     <div><span class="title-name" id="title-name">見習い</span></div>
     <div class="stats">
       <div><div class="label">SCORE</div><div class="val" id="r-score">0</div></div>
+      <div><div class="label">SURVIVED</div><div class="val" id="r-time">0.0</div></div>
       <div><div class="label">LEVEL</div><div class="val" id="r-lv">1</div></div>
       <div><div class="label">MAX COMBO</div><div class="val" id="r-combo">0</div></div>
     </div>
@@ -470,7 +514,11 @@
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const GAME_SEC = 30;
+  // エンドレス：正解で時間が回復し、鬼に飲まれるまで続く
+  const START_SEC = 15;    // 開始時の持ち時間
+  const TIME_CAP  = 20;    // 貯められる上限（無限に貯め込ませない）
+  const TIME_GAIN = 1.5;   // 正解1回の回復量
+  const MISS_SEC  = 2;     // ミスのペナルティ
   let best = Number(localStorage.getItem('irooni_best') || 0);
 
   /* ----- ランキング（ローカル保存・トップ10） ----- */
@@ -553,16 +601,30 @@
     else{ renderWorld(); }
   };
 
+  // 同名は最高スコアの1件だけ残す（スコア降順で最初に現れたものがその人のベスト）
+  const WORLD_FETCH = 500;
+  async function fetchWorldBest(){
+    const res = await sbFetch(
+      `scores?select=name,score,level,combo,dev,title&order=score.desc,created_at.asc&limit=${WORLD_FETCH}`);
+    if(!res.ok) throw new Error(res.status);
+    const rows = await res.json();
+    const seen = new Set(), best = [];
+    for(const r of rows){
+      const key = String(r.name).trim();
+      if(seen.has(key)) continue;
+      seen.add(key);
+      best.push(r);
+    }
+    return best;
+  }
+
   async function renderWorld(){
     const ol = $('rank-list'), empty = $('rank-empty');
     empty.hidden = true;
     ol.hidden = false;
     ol.innerHTML = '<p class="rank-loading">読み込み中…</p>';
     try{
-      const res = await sbFetch(
-        'scores?select=name,score,level,combo,dev,title&order=score.desc,created_at.asc&limit=10');
-      if(!res.ok) throw new Error(res.status);
-      const list = await res.json();
+      const list = (await fetchWorldBest()).slice(0, 10);
       if(!$('tab-world').classList.contains('on')) return; // 取得中にタブが切り替わった
       ol.innerHTML = '';
       if(list.length === 0){
@@ -611,16 +673,15 @@
       });
       if(!res.ok) throw new Error(res.status);
       state.submitted = true;
-      // 自分より上のスコア数から世界順位を出す
+      // 同名を1件に絞ったランキング上での自分の順位を出す
       let rankText = '登録しました！';
       try{
-        const cr = await sbFetch(`scores?select=id&score=gt.${entry.score}`, {
-          method:'HEAD',
-          headers:{'Prefer':'count=exact','Range':'0-0'},
-        });
-        const total = cr.headers.get('content-range');
-        if(total && total.includes('/')){
-          rankText = `世界${Number(total.split('/')[1]) + 1}位にランクイン！`;
+        const best = await fetchWorldBest();
+        const pos = best.findIndex(r => String(r.name).trim() === name);
+        if(pos >= 0){
+          rankText = Number(best[pos].score) === entry.score
+            ? `世界${pos+1}位にランクイン！`
+            : `登録しました（自己ベストで世界${pos+1}位）`;
         }
       }catch(e){}
       msg.textContent = rankText;
@@ -634,9 +695,10 @@
 
   const state = {
     running:false, score:0, combo:0, maxCombo:0, level:1,
-    timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
+    timeLeft:START_SEC, answer:-1, lastTick:0, raf:0, shareText:'', elapsed:0,
     feverUntil:0, lastTs:0, lastRank:-1, lastEntry:null, submitted:false,
-    lastSec:GAME_SEC, revealTimers:[], answers:[], variant:null,
+    lastSec:START_SEC, revealTimers:[], answers:[], variant:null,
+    oniRange:{minR:3000, maxR:3000},
   };
 
   function show(id){
@@ -893,13 +955,16 @@
       document.body.classList.toggle('zone', state.combo >= ZONE_COMBO);
       const isFeverStart = state.combo % FEVER_EVERY === 0;
       if(isFeverStart){ startFever(); sound.fever(); vibrate([0,30,40,30]); }
+      // 正解で時間が回復＝鬼を押し返す
+      state.timeLeft = Math.min(TIME_CAP, state.timeLeft + TIME_GAIN);
+      pushBackOni();
       state.level++;
       buildLevel();
     }else{
       state.combo = 0;
       stopFever();
       document.body.classList.remove('zone');
-      state.timeLeft = Math.max(0, state.timeLeft - 2);
+      state.timeLeft = Math.max(0, state.timeLeft - MISS_SEC);
       sound.miss();
       vibrate([0,60,50,60]);
       $('grid').classList.remove('shake');
@@ -918,13 +983,42 @@
     p.classList.add('show');
   }
 
+  // 正解時：鬼が一瞬たじろぎ、時間表示が光る
+  function pushBackOni(){
+    const o = $('oni'), t = $('h-time');
+    o.classList.remove('push'); void o.offsetWidth; o.classList.add('push');
+    t.classList.remove('gain'); void t.offsetWidth; t.classList.add('gain');
+    document.body.classList.remove('hurry');
+    state.lastSec = Math.ceil(state.timeLeft);
+  }
+
   /* ----- HUD ----- */
   function paintHud(){
     $('h-score').textContent = state.score.toLocaleString();
     $('h-combo').textContent = state.combo;
     $('h-time').textContent = state.timeLeft.toFixed(1);
-    $('tbar').style.transform = `scaleX(${state.timeLeft/GAME_SEC})`;
+    $('tbar').style.transform = `scaleX(${Math.min(1, state.timeLeft/TIME_CAP)})`;
+    // 鬼の闇が外側から迫る。半径は盤面の外周〜画面隅の間を補間する
+    const r = Math.max(0, Math.min(1, state.timeLeft/TIME_CAP));
+    const {minR, maxR} = state.oniRange;
+    document.documentElement.style.setProperty('--oni',
+      (minR + (maxR - minR) * r).toFixed(0) + 'px');
   }
+
+  // 盤面の四隅までの距離（＝闇が踏み込めない下限）と画面隅までの距離を測る
+  function measureOni(){
+    const gr = $('grid').getBoundingClientRect();
+    if(!gr.width) return;
+    const cx = innerWidth/2, cy = innerHeight*0.47;
+    const dist = (x,y) => Math.hypot(x-cx, y-cy);
+    const minR = Math.max(
+      dist(gr.left,gr.top), dist(gr.right,gr.top),
+      dist(gr.left,gr.bottom), dist(gr.right,gr.bottom)) + 10;
+    const maxR = Math.max(
+      dist(0,0), dist(innerWidth,0), dist(0,innerHeight), dist(innerWidth,innerHeight));
+    state.oniRange = {minR, maxR: Math.max(maxR, minR)};
+  }
+  addEventListener('resize', () => { measureOni(); if(state.running) paintHud(); });
 
   /* ----- ループ ----- */
   function tick(t){
@@ -932,6 +1026,7 @@
     const dt = (t - state.lastTick)/1000;
     state.lastTick = t;
     state.timeLeft = Math.max(0, state.timeLeft - dt);
+    state.elapsed += dt;
 
     // 残り5秒からの秒読み
     const sec = Math.ceil(state.timeLeft);
@@ -965,7 +1060,7 @@
 
     Object.assign(state,{
       running:true, score:0, combo:0, maxCombo:0, level:1,
-      timeLeft:GAME_SEC, lastSec:GAME_SEC,
+      timeLeft:START_SEC, lastSec:START_SEC, elapsed:0,
     });
     sound.unlock();
     stopFever();
@@ -975,6 +1070,7 @@
     if(typeof gtag === 'function') gtag('event', wasMidGame ? 'game_restart' : 'game_start');
     show('scr-game');
     buildLevel();
+    measureOni();      // 盤面が配置された後に計測する
     paintHud();
     state.lastTick = performance.now();
     state.raf = requestAnimationFrame(tick);
@@ -1007,8 +1103,9 @@
   function showResult(){
     state.revealTimers = [];
     document.body.classList.remove('playing');
-    // 偏差値：スコアをロジスティックに写像（10万点前後で65〜70、上はさらに遠い）
-    const dev = 30 + 55 / (1 + Math.exp(-(state.score - 70000)/32000));
+    // 偏差値：エンドレス化でスコアの幅が桁違いに広がったため対数で写像
+    // （1万点→33、10万点→53、100万点→79、400万点超で最上位帯）
+    const dev = 30 + 55 / (1 + Math.exp(-(Math.log10(state.score + 1) - 5.15)/0.42));
     const d = Math.floor(dev);
     const titles = [
       [83,'色の神'],[79,'人間卒業'],[75,'四色型色覚'],
@@ -1021,6 +1118,7 @@
     $('dev-num').textContent = d;
     $('title-name').textContent = title;
     $('r-score').textContent = state.score.toLocaleString();
+    $('r-time').textContent = state.elapsed.toFixed(1);
     $('r-lv').textContent = state.level;
     $('r-combo').textContent = state.maxCombo;
 
@@ -1072,7 +1170,7 @@
 
     state.shareText =
       `イロオニで色感偏差値${d}【${title}】だった！\n`+
-      `SCORE ${state.score.toLocaleString()} / LV${state.level} / 最大${state.maxCombo}コンボ\n`+
+      `SCORE ${state.score.toLocaleString()} / ${state.elapsed.toFixed(1)}秒生存 / LV${state.level}\n`+
       `https://gongbenhuiyou027-png.github.io/Iro-oni/\n#イロオニ`;
     show('scr-result');
   }
