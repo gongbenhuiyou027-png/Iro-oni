@@ -3,18 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>イロオニ — エンドレス色感バトル</title>
-<meta name="description" content="1枚だけ違う色をタップし続けろ。迫るオニに飲まれるまで終わらない、エンドレス色感バトル。">
+<title>Ironly — Endless Color Chase</title>
+<meta name="description" content="One tile is a different color. Tap it, keep the Oni back, and survive as long as you can. A 5-second-to-learn color reflex game.">
 
 <!-- OGP -->
-<meta property="og:title" content="イロオニ — エンドレス色感バトル">
-<meta property="og:description" content="1枚だけ違う色をタップし続けろ。オニに飲まれるまで、どこまでも。">
+<meta property="og:title" content="Ironly — Endless Color Chase">
+<meta property="og:description" content="One tile is a different color. Tap it before the Oni takes you.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://gongbenhuiyou027-png.github.io/Iro-oni/">
 <meta property="og:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="イロオニ — エンドレス色感バトル">
-<meta name="twitter:description" content="1枚だけ違う色をタップし続けろ。あなたの色感偏差値は？">
+<meta name="twitter:title" content="Ironly — Endless Color Chase">
+<meta name="twitter:description" content="One tile is a different color. How long can you last?">
 <meta name="twitter:image" content="https://gongbenhuiyou027-png.github.io/Iro-oni/ogp.png">
 
 <!-- Google tag (gtag.js) -->
@@ -285,6 +285,17 @@
   #restart:active{transform:scale(.96);}
   #restart .ricon{font-size:15px;line-height:1;}
 
+  #lang{
+    position:fixed;top:14px;right:60px;z-index:5;
+    height:38px;padding:0 13px;border-radius:999px;
+    border:1.5px solid #47424f;background:var(--panel);
+    color:var(--ink);font:inherit;font-size:12px;font-weight:800;
+    letter-spacing:.1em;cursor:pointer;opacity:.55;
+    display:flex;align-items:center;
+    transition:opacity .25s,border-color .25s;
+  }
+  #lang:hover{opacity:1;border-color:var(--accent);}
+
   #mute{
     position:fixed;top:14px;right:14px;z-index:5;
     width:38px;height:38px;border-radius:50%;
@@ -414,24 +425,21 @@
 </head>
 <body>
 <div id="oni" aria-hidden="true"></div>
-<button id="restart" onclick="startGame()" aria-label="最初からやり直す" title="やり直す（R）">
-  <span class="ricon">↻</span><span class="rlabel">やり直す</span>
+<button id="restart" onclick="startGame()" data-i18n-aria="restartAria" data-i18n-title="restartTitle">
+  <span class="ricon">↻</span><span class="rlabel" data-i18n="restart">やり直す</span>
 </button>
-<button id="mute" onclick="toggleMute()" aria-label="サウンド切り替え">🔊</button>
+<button id="lang" onclick="toggleLang()" data-i18n-aria="langAria">EN</button>
+<button id="mute" onclick="toggleMute()" data-i18n-aria="muteAria">🔊</button>
 <div class="app">
 
   <!-- タイトル画面 -->
   <section class="screen active" id="scr-title">
-    <div class="brand">ENDLESS COLOR CHASE</div>
-    <h1>イロ<span class="oni">オニ</span></h1>
-    <p class="lead">
-      1枚だけ<b>色が違う</b>タイルをタップ。<br>
-      正解すると<b>時間が回復</b>、ミスで−2秒。<br>
-      迫りくる<b>オニ</b>に飲まれるまで、どこまでも。
-    </p>
+    <div class="brand" data-i18n="brand">ENDLESS COLOR CHASE</div>
+    <h1>Iro<span class="oni">nly</span></h1>
+    <p class="lead" data-i18n-html="lead"></p>
     <div class="btncol" style="margin-top:4px">
-      <button class="btn" onclick="startGame()">はじめる</button>
-      <button class="btn ghost" onclick="openRanking('scr-title')">ランキング</button>
+      <button class="btn" onclick="startGame()" data-i18n="play">はじめる</button>
+      <button class="btn ghost" onclick="openRanking('scr-title')" data-i18n="ranking">ランキング</button>
     </div>
     <div class="bestline" id="bestline" hidden>BEST <b id="bestval">0</b></div>
   </section>
@@ -446,7 +454,7 @@
     <div class="timerbar"><i id="tbar"></i></div>
     <div class="gridwrap">
       <div id="grid"></div>
-      <div id="penalty">−2秒</div>
+      <div id="penalty" data-i18n="penalty">−2秒</div>
       <div id="roundtag"></div>
     </div>
     <div class="fever-slot">
@@ -460,7 +468,7 @@
 
   <!-- リザルト画面 -->
   <section class="screen" id="scr-result">
-    <div class="dev-label">色感偏差値</div>
+    <div class="dev-label" data-i18n="devLabel">色感偏差値</div>
     <div class="dev-num" id="dev-num">50</div>
     <div><span class="title-name" id="title-name">見習い</span></div>
     <div class="stats">
@@ -471,14 +479,14 @@
     </div>
     <div class="rank-banner" id="rank-banner" hidden></div>
     <div class="gsubmit" id="gsubmit" hidden>
-      <input id="gname" maxlength="10" placeholder="なまえ（10文字まで）" autocomplete="nickname">
-      <button class="btn gbtn" id="gsend" onclick="submitGlobal()">世界ランキングに登録</button>
+      <input id="gname" maxlength="10" data-i18n-ph="namePh" autocomplete="nickname">
+      <button class="btn gbtn" id="gsend" onclick="submitGlobal()" data-i18n="submitBtn">世界ランキングに登録</button>
       <div class="gmsg" id="gmsg"></div>
     </div>
     <div class="btncol">
-      <button class="btn" onclick="share()">結果をシェア</button>
-      <button class="btn ghost" onclick="openRanking('scr-result')">ランキングを見る</button>
-      <button class="btn ghost" onclick="startGame()">もう一回</button>
+      <button class="btn" onclick="share()" data-i18n="share">結果をシェア</button>
+      <button class="btn ghost" onclick="openRanking('scr-result')" data-i18n="seeRanking">ランキングを見る</button>
+      <button class="btn ghost" onclick="startGame()" data-i18n="again">もう一回</button>
     </div>
     <div class="bestline" style="margin-top:24px">BEST <b id="bestval2">0</b></div>
   </section>
@@ -486,21 +494,21 @@
   <!-- ランキング画面 -->
   <section class="screen" id="scr-ranking">
     <div class="brand">TOP 10 RANKING</div>
-    <h1 style="font-size:clamp(30px,9vw,40px);margin-bottom:8px">ランキング</h1>
+    <h1 style="font-size:clamp(30px,9vw,40px);margin-bottom:8px" data-i18n="rankTitle">ランキング</h1>
     <div class="rtabs" id="rtabs" hidden>
-      <button id="tab-local" class="on" onclick="rankTab('local')">この端末</button>
-      <button id="tab-world" onclick="rankTab('world')">世界</button>
+      <button id="tab-local" class="on" onclick="rankTab('local')" data-i18n="tabLocal">この端末</button>
+      <button id="tab-world" onclick="rankTab('world')" data-i18n="tabWorld">世界</button>
     </div>
     <ol class="rank-list" id="rank-list"></ol>
-    <p class="rank-empty" id="rank-empty" hidden>まだ記録がありません。<br>プレイして名を刻もう。</p>
+    <p class="rank-empty" id="rank-empty" hidden data-i18n-html="rankEmpty"></p>
     <div class="btncol" style="margin-top:26px">
-      <button class="btn" onclick="startGame()">プレイする</button>
-      <button class="btn ghost" id="rank-back">もどる</button>
+      <button class="btn" onclick="startGame()" data-i18n="playNow">プレイする</button>
+      <button class="btn ghost" id="rank-back" data-i18n="back">もどる</button>
     </div>
   </section>
 
 </div>
-<div id="toast">コピーしました</div>
+<div id="toast" data-i18n="copied">コピーしました</div>
 
 <script>
   // ★ 世界ランキング設定（SUPABASE_SETUP.md参照）
@@ -514,6 +522,108 @@
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+
+  /* ================= 言語 ================= */
+  const I18N = {
+    ja: {
+      docTitle:'Ironly — エンドレス色感バトル',
+      brand:'ENDLESS COLOR CHASE',
+      lead:'1枚だけ<b>色が違う</b>タイルをタップ。<br>'+
+           '正解すると<b>時間が回復</b>、ミスで−2秒。<br>'+
+           '迫りくる<b>オニ</b>に飲まれるまで、どこまでも。',
+      play:'はじめる', playNow:'プレイする', ranking:'ランキング', again:'もう一回',
+      share:'結果をシェア', seeRanking:'ランキングを見る', back:'もどる',
+      restart:'やり直す', restartAria:'最初からやり直す', restartTitle:'やり直す（R）',
+      muteAria:'サウンド切り替え', langAria:'言語を切り替える',
+      penalty:'−2秒', devLabel:'色感偏差値', rankTitle:'ランキング',
+      tabLocal:'この端末', tabWorld:'世界',
+      rankEmpty:'まだ記録がありません。<br>プレイして名を刻もう。',
+      namePh:'なまえ（10文字まで）', submitBtn:'世界ランキングに登録',
+      copied:'コピーしました',
+      loading:'読み込み中…', fetchFail:'取得できませんでした。通信環境を確認してね。',
+      sendFail:'送信に失敗しました。もう一度試してね。',
+      sending:'送信中…', needName:'なまえを入れてね', registered:'登録しました！',
+      rankedIn:n=>`世界${n}位にランクイン！`,
+      bestRank:n=>`登録しました（自己ベストで世界${n}位）`,
+      newBest:'🏆 自己ベスト更新！ ランキング <b>1</b> 位',
+      rankBanner:n=>`ランキング <b>${n}</b> 位にランクイン！`,
+      here:'正解はここ', seeIt:'違い、見える？',
+      metaLine:(t,lv,c,d)=>`${t} ・ LV${lv} ・ 最大${c}コンボ ・ ${d}`,
+      worldMeta:(dev,t,lv,c)=>`偏差値${dev} ・ ${t} ・ LV${lv} ・ 最大${c}コンボ`,
+      variants:{ drift:{name:'ドリフト', hint:'色がゆっくり動く'},
+                 inverse:{name:'逆オニ', hint:'同じ色が2枚ある。どちらかをタップ'} },
+      titles:['色の神','人間卒業','四色型色覚','印刷所の目','染織職人','色彩鑑定士',
+              'デザイナーの卵','色感アリ','ふつうの人','昨日寝てない？','蛍光灯の下暮らし','モノクロ生活'],
+      shareText:(d,t,sc,sec,lv)=>
+        `Ironlyで色感偏差値${d}【${t}】だった！\n`+
+        `SCORE ${sc} / ${sec}秒生存 / LV${lv}\n`,
+    },
+    en: {
+      docTitle:'Ironly — Endless Color Chase',
+      brand:'ENDLESS COLOR CHASE',
+      lead:'Tap the <b>one tile</b> with a different color.<br>'+
+           'A hit <b>restores time</b>. A miss costs 2s.<br>'+
+           'Outlast the <b>Oni</b> closing in on you.',
+      play:'PLAY', playNow:'PLAY', ranking:'RANKING', again:'PLAY AGAIN',
+      share:'SHARE RESULT', seeRanking:'SEE RANKING', back:'BACK',
+      restart:'restart', restartAria:'Restart from the beginning', restartTitle:'Restart (R)',
+      muteAria:'Toggle sound', langAria:'Switch language',
+      penalty:'−2s', devLabel:'COLOR RATING', rankTitle:'RANKING',
+      tabLocal:'This device', tabWorld:'World',
+      rankEmpty:'No scores yet.<br>Play a round and put your name up.',
+      namePh:'your name (max 10)', submitBtn:'SUBMIT TO WORLD RANKING',
+      copied:'Copied',
+      loading:'Loading…', fetchFail:"Couldn't load. Check your connection.",
+      sendFail:"Couldn't submit. Please try again.",
+      sending:'Sending…', needName:'Enter a name first', registered:'Submitted!',
+      rankedIn:n=>`You're #${n} in the world!`,
+      bestRank:n=>`Submitted (your best is #${n} in the world)`,
+      newBest:'🏆 NEW PERSONAL BEST — <b>1</b>st on this device',
+      rankBanner:n=>`<b>${n}</b>${ordinal(n)} on this device!`,
+      here:'It was here', seeIt:'See the difference?',
+      metaLine:(t,lv,c,d)=>`${t} ・ LV${lv} ・ ${c} combo ・ ${d}`,
+      worldMeta:(dev,t,lv,c)=>`Rating ${dev} ・ ${t} ・ LV${lv} ・ ${c} combo`,
+      variants:{ drift:{name:'DRIFT', hint:'the colors keep shifting'},
+                 inverse:{name:'REVERSE', hint:'two tiles match — tap either one'} },
+      titles:['Color God','Beyond Human','Tetrachromat','Press-Room Eye','Master Dyer','Color Appraiser',
+              'Design Rookie','Good Eye','Perfectly Average','Need More Sleep?','Fluorescent Dweller','Living in Grayscale'],
+      shareText:(d,t,sc,sec,lv)=>
+        `My Ironly color rating: ${d} — ${t}\n`+
+        `SCORE ${sc} / survived ${sec}s / LV${lv}\n`,
+    },
+  };
+  function ordinal(n){
+    const s=['th','st','nd','rd'], v=n%100;
+    return s[(v-20)%10] || s[v] || s[0];
+  }
+  let lang = localStorage.getItem('irooni_lang')
+          || ((navigator.language||'en').toLowerCase().startsWith('ja') ? 'ja' : 'en');
+  const t = k => I18N[lang][k];
+
+  function applyLang(){
+    document.documentElement.lang = lang;
+    document.title = t('docTitle');
+    document.querySelectorAll('[data-i18n]').forEach(el =>
+      el.textContent = t(el.dataset.i18n));
+    document.querySelectorAll('[data-i18n-html]').forEach(el =>
+      el.innerHTML = t(el.dataset.i18nHtml));
+    document.querySelectorAll('[data-i18n-ph]').forEach(el =>
+      el.placeholder = t(el.dataset.i18nPh));
+    document.querySelectorAll('[data-i18n-aria]').forEach(el =>
+      el.setAttribute('aria-label', t(el.dataset.i18nAria)));
+    document.querySelectorAll('[data-i18n-title]').forEach(el =>
+      el.title = t(el.dataset.i18nTitle));
+    $('lang').textContent = lang === 'ja' ? 'EN' : 'JA';   // 押すと切り替わる先を表示
+    $('mute').textContent = sound.muted ? '🔇' : '🔊';
+  }
+  window.toggleLang = function(){
+    lang = lang === 'ja' ? 'en' : 'ja';
+    localStorage.setItem('irooni_lang', lang);
+    applyLang();
+    if($('scr-ranking').classList.contains('active'))
+      rankTab($('tab-world').classList.contains('on') ? 'world' : 'local');
+    if(typeof gtag === 'function') gtag('event', 'switch_lang', {lang});
+  };
   // エンドレス：正解で時間が回復し、鬼に飲まれるまで続く
   const START_SEC = 15;    // 開始時の持ち時間
   const TIME_CAP  = 20;    // 貯められる上限（無限に貯め込ませない）
@@ -562,7 +672,7 @@
         `<span class="pos">${i+1}</span>`+
         `<span class="rmain">`+
           `<span class="rscore">${Number(e.score).toLocaleString()}</span>`+
-          `<span class="rmeta">${e.title} ・ LV${e.level} ・ 最大${e.combo}コンボ ・ ${fmtDate(e.ts)}</span>`+
+          `<span class="rmeta">${esc(t('metaLine')(showTitle(e.title), e.level, e.combo, fmtDate(e.ts)))}</span>`+
         `</span>`+
         `<span class="rdev">${e.dev}<small>偏差値</small></span>`;
       ol.appendChild(li);
@@ -590,6 +700,14 @@
         ...(opts.headers || {}),
       },
     });
+  }
+  // 保存済みの称号は文字列だが、両言語の一覧と突き合わせて現在の言語で描き直す
+  function showTitle(str){
+    for(const L of ['ja','en']){
+      const i = I18N[L].titles.indexOf(str);
+      if(i >= 0) return I18N[lang].titles[i];
+    }
+    return str;
   }
   const esc = s => String(s).replace(/[&<>"']/g,
     c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -622,7 +740,7 @@
     const ol = $('rank-list'), empty = $('rank-empty');
     empty.hidden = true;
     ol.hidden = false;
-    ol.innerHTML = '<p class="rank-loading">読み込み中…</p>';
+    ol.innerHTML = `<p class="rank-loading">${esc(t('loading'))}</p>`;
     try{
       const list = (await fetchWorldBest()).slice(0, 10);
       if(!$('tab-world').classList.contains('on')) return; // 取得中にタブが切り替わった
@@ -638,14 +756,14 @@
           `<span class="pos">${i+1}</span>`+
           `<span class="rmain">`+
             `<span class="rname">${esc(e.name)}</span>`+
-            `<span class="rmeta">偏差値${Number(e.dev)} ・ ${esc(e.title)} ・ LV${Number(e.level)} ・ 最大${Number(e.combo)}コンボ</span>`+
+            `<span class="rmeta">${esc(t('worldMeta')(Number(e.dev), showTitle(e.title), Number(e.level), Number(e.combo)))}</span>`+
           `</span>`+
           `<span class="rdev rpts">${Number(e.score).toLocaleString()}<small>SCORE</small></span>`;
         ol.appendChild(li);
       });
     }catch(err){
       if(!$('tab-world').classList.contains('on')) return;
-      ol.innerHTML = '<p class="rank-loading">取得できませんでした。通信環境を確認してね。</p>';
+      ol.innerHTML = `<p class="rank-loading">${esc(t('fetchFail'))}</p>`;
     }
   }
 
@@ -654,12 +772,12 @@
     const name = $('gname').value.trim().slice(0, 10);
     const msg = $('gmsg');
     if(!name){
-      msg.textContent = 'なまえを入れてね';
+      msg.textContent = t('needName');
       msg.classList.add('err');
       return;
     }
     msg.classList.remove('err');
-    msg.textContent = '送信中…';
+    msg.textContent = t('sending');
     $('gsend').disabled = true;
     localStorage.setItem('irooni_name', name);
     const entry = state.lastEntry;
@@ -674,20 +792,19 @@
       if(!res.ok) throw new Error(res.status);
       state.submitted = true;
       // 同名を1件に絞ったランキング上での自分の順位を出す
-      let rankText = '登録しました！';
+      let rankText = t('registered');
       try{
         const best = await fetchWorldBest();
         const pos = best.findIndex(r => String(r.name).trim() === name);
         if(pos >= 0){
           rankText = Number(best[pos].score) === entry.score
-            ? `世界${pos+1}位にランクイン！`
-            : `登録しました（自己ベストで世界${pos+1}位）`;
+            ? t('rankedIn')(pos+1) : t('bestRank')(pos+1);
         }
       }catch(e){}
       msg.textContent = rankText;
       if(typeof gtag === 'function') gtag('event', 'submit_global_score', {score: entry.score});
     }catch(err){
-      msg.textContent = '送信に失敗しました。もう一度試してね。';
+      msg.textContent = t('sendFail');
       msg.classList.add('err');
       $('gsend').disabled = false;
     }
@@ -837,11 +954,7 @@
   const VARIANT_FROM_LEVEL = 10;   // このレベル以降に出現
   const VARIANT_CHANCE = 0.3;      // 出現率
   const VARIANT_BONUS = 1.5;       // 難しいぶん得点にボーナス
-  const VARIANTS = {
-    drift:   {name:'ドリフト', hint:'色がゆっくり動く'},
-    inverse: {name:'逆オニ',   hint:'同じ色が2枚ある。どちらかをタップ'},
-  };
-  const VARIANT_KEYS = Object.keys(VARIANTS);
+  const VARIANT_KEYS = ['drift','inverse'];
 
   function pickVariant(lv){
     if(lv < VARIANT_FROM_LEVEL) return null;
@@ -865,7 +978,7 @@
       $('reveal-msg').textContent = '';
       return;
     }
-    const {name, hint} = VARIANTS[variant];
+    const {name, hint} = t('variants')[variant];
     tag.textContent = name;
     tag.classList.remove('show');
     void tag.offsetWidth;
@@ -1088,13 +1201,13 @@
     const btns = $('grid').children;
     if(btns[state.answer]){
       btns[state.answer].classList.add('hit-outline');
-      $('reveal-msg').textContent = '正解はここ';
+      $('reveal-msg').textContent = t('here');
     }
     // リベール中にやり直された場合に備え、タイマーは中断できるよう保持する
     state.revealTimers = [
       setTimeout(()=>{
         if(btns[state.answer]) btns[state.answer].classList.remove('hit-outline');
-        $('reveal-msg').textContent = '違い、見える？';
+        $('reveal-msg').textContent = t('seeIt');
       }, 1500),
       setTimeout(showResult, 3000),
     ];
@@ -1107,13 +1220,8 @@
     // （1万点→33、10万点→53、100万点→79、400万点超で最上位帯）
     const dev = 30 + 55 / (1 + Math.exp(-(Math.log10(state.score + 1) - 5.15)/0.42));
     const d = Math.floor(dev);
-    const titles = [
-      [83,'色の神'],[79,'人間卒業'],[75,'四色型色覚'],
-      [71,'印刷所の目'],[67,'染織職人'],[63,'色彩鑑定士'],
-      [59,'デザイナーの卵'],[55,'色感アリ'],[51,'ふつうの人'],
-      [47,'昨日寝てない？'],[43,'蛍光灯の下暮らし'],[0,'モノクロ生活'],
-    ];
-    const title = titles.find(([th])=>d>=th)[1];
+    const THRESHOLDS = [83,79,75,71,67,63,59,55,51,47,43,0];
+    const title = t('titles')[THRESHOLDS.findIndex(th => d >= th)];
 
     $('dev-num').textContent = d;
     $('title-name').textContent = title;
@@ -1151,10 +1259,10 @@
     }
     const banner = $('rank-banner');
     if(state.lastRank === 1){
-      banner.innerHTML = '🏆 自己ベスト更新！ ランキング <b>1</b> 位';
+      banner.innerHTML = t('newBest');
       banner.hidden = false;
     }else if(state.lastRank > 0){
-      banner.innerHTML = `ランキング <b>${state.lastRank}</b> 位にランクイン！`;
+      banner.innerHTML = t('rankBanner')(state.lastRank);
       banner.hidden = false;
     }else{
       banner.hidden = true;
@@ -1169,9 +1277,9 @@
     });
 
     state.shareText =
-      `イロオニで色感偏差値${d}【${title}】だった！\n`+
-      `SCORE ${state.score.toLocaleString()} / ${state.elapsed.toFixed(1)}秒生存 / LV${state.level}\n`+
-      `https://gongbenhuiyou027-png.github.io/Iro-oni/\n#イロオニ`;
+      t('shareText')(d, title, state.score.toLocaleString(),
+                     state.elapsed.toFixed(1), state.level)+
+      `https://gongbenhuiyou027-png.github.io/Iro-oni/\n#Ironly`;
     show('scr-result');
   }
 
@@ -1208,7 +1316,7 @@
     paintMute();
     if(typeof gtag === 'function') gtag('event', 'toggle_mute', {muted: sound.muted});
   };
-  paintMute();
+  applyLang();   // 画面の文言を現在の言語で描く（ミュート表示もここで行う）
 
   // 起動時ベスト表示
   if(best>0){
