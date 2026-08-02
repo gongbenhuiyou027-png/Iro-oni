@@ -267,6 +267,21 @@
   }
 
   /* ---------- 手応え演出 ---------- */
+  /* やり直しボタン：プレイ中だけ表示（誤タップ防止のため盤面から離れた左上に固定） */
+  #restart{
+    position:fixed;top:14px;left:14px;z-index:5;
+    display:none;align-items:center;gap:7px;
+    border:1.5px solid #47424f;background:var(--panel);
+    color:var(--sub);font:inherit;font-size:12px;font-weight:800;
+    letter-spacing:.1em;padding:9px 16px 9px 13px;border-radius:999px;
+    cursor:pointer;opacity:.75;
+    transition:opacity .25s,border-color .25s,color .25s;
+  }
+  body.playing #restart{display:flex;}
+  #restart:hover{opacity:1;color:var(--ink);border-color:var(--accent);}
+  #restart:active{transform:scale(.96);}
+  #restart .ricon{font-size:15px;line-height:1;}
+
   #mute{
     position:fixed;top:14px;right:14px;z-index:5;
     width:38px;height:38px;border-radius:50%;
@@ -332,6 +347,9 @@
 </style>
 </head>
 <body>
+<button id="restart" onclick="startGame()" aria-label="最初からやり直す" title="やり直す（R）">
+  <span class="ricon">↻</span><span class="rlabel">やり直す</span>
+</button>
 <button id="mute" onclick="toggleMute()" aria-label="サウンド切り替え">🔊</button>
 <div class="app">
 
@@ -593,7 +611,7 @@
     running:false, score:0, combo:0, maxCombo:0, level:1,
     timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
     feverUntil:0, lastTs:0, lastRank:-1, lastEntry:null, submitted:false,
-    lastSec:GAME_SEC,
+    lastSec:GAME_SEC, revealTimers:[],
   };
 
   function show(id){
@@ -843,6 +861,12 @@
 
   /* ----- 開始/終了 ----- */
   window.startGame = function(){
+    const wasMidGame = document.body.classList.contains('playing');
+    // 前回のリベール待ちを中断（やり直し直後に結果画面へ飛ぶのを防ぐ）
+    state.revealTimers.forEach(clearTimeout);
+    state.revealTimers = [];
+    cancelAnimationFrame(state.raf);
+
     Object.assign(state,{
       running:true, score:0, combo:0, maxCombo:0, level:1,
       timeLeft:GAME_SEC, lastSec:GAME_SEC,
@@ -850,8 +874,9 @@
     sound.unlock();
     stopFever();
     document.body.classList.remove('zone','hurry');
+    document.body.classList.add('playing');
     $('reveal-msg').textContent = '';
-    if(typeof gtag === 'function') gtag('event', 'game_start');
+    if(typeof gtag === 'function') gtag('event', wasMidGame ? 'game_restart' : 'game_start');
     show('scr-game');
     buildLevel();
     paintHud();
@@ -873,14 +898,19 @@
       btns[state.answer].classList.add('hit-outline');
       $('reveal-msg').textContent = '正解はここ';
     }
-    setTimeout(()=>{
-      if(btns[state.answer]) btns[state.answer].classList.remove('hit-outline');
-      $('reveal-msg').textContent = '違い、見える？';
-    }, 1500);
-    setTimeout(showResult, 3000);
+    // リベール中にやり直された場合に備え、タイマーは中断できるよう保持する
+    state.revealTimers = [
+      setTimeout(()=>{
+        if(btns[state.answer]) btns[state.answer].classList.remove('hit-outline');
+        $('reveal-msg').textContent = '違い、見える？';
+      }, 1500),
+      setTimeout(showResult, 3000),
+    ];
   }
 
   function showResult(){
+    state.revealTimers = [];
+    document.body.classList.remove('playing');
     // 偏差値：スコアをロジスティックに写像（10万点前後で65〜70、上はさらに遠い）
     const dev = 30 + 55 / (1 + Math.exp(-(state.score - 70000)/32000));
     const d = Math.floor(dev);
@@ -964,6 +994,14 @@
       setTimeout(()=>t.classList.remove('show'),1800);
     }catch(e){}
   };
+
+  // Rキーでやり直し（入力欄にフォーカスがあるときは無効）
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'r' && e.key !== 'R') return;
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(/^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '')) return;
+    if(document.body.classList.contains('playing')) startGame();
+  });
 
   // ミュート切り替え
   function paintMute(){
