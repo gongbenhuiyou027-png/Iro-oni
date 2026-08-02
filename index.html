@@ -266,12 +266,73 @@
     display:block;height:100%;background:#fff;transform-origin:left;
   }
 
+  /* ---------- 手応え演出 ---------- */
+  #mute{
+    position:fixed;top:14px;right:14px;z-index:5;
+    width:38px;height:38px;border-radius:50%;
+    border:1.5px solid #47424f;background:var(--panel);
+    color:var(--ink);font-size:16px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .25s,border-color .25s;opacity:.55;
+  }
+  #mute:hover{opacity:1;}
+  #mute.off{opacity:.35;}
+
+  .pop{
+    position:absolute;transform:translate(-50%,-50%);
+    font-size:20px;font-weight:900;color:var(--ink);
+    text-shadow:0 2px 12px rgba(0,0,0,.6);
+    pointer-events:none;animation:popup .9s ease-out forwards;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  @keyframes popup{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
+    18%{opacity:1;transform:translate(-50%,-70%) scale(1.15);}
+    35%{transform:translate(-50%,-80%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-190%) scale(.95);}
+  }
+
+  #penalty{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    font-size:34px;font-weight:900;color:var(--danger);
+    text-shadow:0 2px 16px rgba(0,0,0,.7);
+    pointer-events:none;opacity:0;
+  }
+  #penalty.show{animation:penalty .7s ease-out;}
+  @keyframes penalty{
+    0%{opacity:0;transform:translate(-50%,-50%) scale(.7);}
+    20%{opacity:1;transform:translate(-50%,-50%) scale(1.1);}
+    60%{opacity:1;transform:translate(-50%,-70%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-95%) scale(.95);}
+  }
+
+  /* 残り5秒：タイマーが赤く脈打つ */
+  body.hurry .hud .val#h-time{color:var(--danger);animation:pulse .5s ease-in-out infinite;}
+  body.hurry .timerbar i{background:var(--danger);}
+  @keyframes pulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.12);}
+  }
+
+  /* ゾーン（15コンボ以上）：盤面が発光 */
+  body.zone #grid{
+    box-shadow:0 0 0 2px var(--accent), 0 0 50px color-mix(in srgb,var(--accent) 45%,transparent);
+  }
+  body.zone .hud .val.combo{
+    animation:pulse .45s ease-in-out infinite;
+  }
+  body.fever.zone #grid{
+    box-shadow:0 0 0 3px #fff, 0 0 60px rgba(255,255,255,.4);
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none!important;transition:none!important;}
   }
 </style>
 </head>
 <body>
+<button id="mute" onclick="toggleMute()" aria-label="サウンド切り替え">🔊</button>
 <div class="app">
 
   <!-- タイトル画面 -->
@@ -300,6 +361,7 @@
     <div class="timerbar"><i id="tbar"></i></div>
     <div class="gridwrap">
       <div id="grid"></div>
+      <div id="penalty">−2秒</div>
     </div>
     <div class="fever-slot">
       <div class="fever-tag">
@@ -531,11 +593,126 @@
     running:false, score:0, combo:0, maxCombo:0, level:1,
     timeLeft:GAME_SEC, answer:-1, lastTick:0, raf:0, shareText:'',
     feverUntil:0, lastTs:0, lastRank:-1, lastEntry:null, submitted:false,
+    lastSec:GAME_SEC,
   };
 
   function show(id){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     $(id).classList.add('active');
+  }
+
+  /* ----- サウンド（WebAudioでその場合成・音源ファイル不要） ----- */
+  const sound = (() => {
+    let ctx = null, master = null;
+    let muted = localStorage.getItem('irooni_muted') === '1';
+
+    // 初回タップ時に生成（iOS/Chromeの自動再生制限に対応）
+    function ready(){
+      if(!ctx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC) return false;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = 0.25;
+        master.connect(ctx.destination);
+      }
+      if(ctx.state === 'suspended') ctx.resume();
+      return !muted;
+    }
+
+    // 単音。type:波形, freq:周波数, dur:長さ(秒), vol:音量, slide:終端周波数
+    function tone(freq, dur, {type='sine', vol=1, delay=0, slide=null, attack=0.005} = {}){
+      if(!ready()) return;
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if(slide) osc.frequency.exponentialRampToValueAtTime(slide, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + dur + 0.02);
+    }
+
+    // ノイズバースト（ミスやフィーバーの「シャッ」）
+    function noise(dur, {vol=0.5, delay=0, hp=800} = {}){
+      if(!ready()) return;
+      const t0 = ctx.currentTime + delay;
+      const len = Math.ceil(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i=0;i<len;i++) d[i] = (Math.random()*2 - 1) * (1 - i/len);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const f = ctx.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = hp;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(vol, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(master);
+      src.start(t0); src.stop(t0 + dur);
+    }
+
+    // ペンタトニックでコンボごとに音階が上がる（外れた響きにならない）
+    const SCALE = [0, 2, 4, 7, 9];
+    function comboPitch(combo){
+      const i = Math.max(0, combo - 1);
+      const semi = SCALE[i % SCALE.length] + 12 * Math.floor(i / SCALE.length);
+      return 440 * Math.pow(2, (semi % 36) / 12);   // 3オクターブで循環
+    }
+
+    return {
+      get muted(){ return muted; },
+      toggle(){
+        muted = !muted;
+        localStorage.setItem('irooni_muted', muted ? '1' : '0');
+        if(!muted){ ready(); tone(880, .12, {type:'triangle', vol:.5}); }
+        return muted;
+      },
+      unlock(){ ready(); },
+      hit(combo){
+        const f = comboPitch(combo);
+        tone(f, .18, {type:'triangle', vol:.5});
+        tone(f*2, .1, {type:'sine', vol:.18, delay:.01});
+      },
+      miss(){
+        tone(180, .3, {type:'sawtooth', vol:.35, slide:70});
+        noise(.15, {vol:.25, hp:400});
+      },
+      fever(){
+        noise(.3, {vol:.35, hp:1500});
+        [0,3,7,12].forEach((s,i) =>
+          tone(440*Math.pow(2,s/12), .35, {type:'square', vol:.28, delay:i*.06}));
+      },
+      countdown(){ tone(880, .07, {type:'square', vol:.3}); },
+      gameover(){
+        [0,-2,-5,-9].forEach((s,i) =>
+          tone(440*Math.pow(2,s/12), .5, {type:'triangle', vol:.35, delay:i*.13}));
+      },
+      fanfare(){
+        [0,4,7,12,16].forEach((s,i) =>
+          tone(440*Math.pow(2,s/12), .5, {type:'triangle', vol:.32, delay:i*.09}));
+      },
+    };
+  })();
+
+  function vibrate(ms){
+    if(navigator.vibrate && !sound.muted){ try{ navigator.vibrate(ms); }catch(e){} }
+  }
+
+  /* ----- 得点ポップ ----- */
+  function popScore(el, gain){
+    const p = document.createElement('span');
+    p.className = 'pop';
+    p.textContent = '+' + gain.toLocaleString();
+    const wrap = $('grid').parentElement;
+    const gr = wrap.getBoundingClientRect(), br = el.getBoundingClientRect();
+    p.style.left = (br.left - gr.left + br.width/2) + 'px';
+    p.style.top  = (br.top  - gr.top  + br.height/2) + 'px';
+    wrap.appendChild(p);
+    setTimeout(()=>p.remove(), 900);
   }
 
   /* ----- 色生成 ----- */
@@ -585,26 +762,46 @@
   }
 
   /* ----- 入力 ----- */
+  const ZONE_COMBO = 15;
   function tap(i, el){
     if(!state.running) return;
+    sound.unlock();
     if(i === state.answer){
       state.combo++;
       state.maxCombo = Math.max(state.maxCombo, state.combo);
       let mult = 1 + Math.min(state.combo,10)*0.2;
       if(inFever()) mult *= 2;
-      state.score += Math.round(100 * state.level * mult);
-      if(state.combo % FEVER_EVERY === 0) startFever();
+      const gain = Math.round(100 * state.level * mult);
+      state.score += gain;
+      sound.hit(state.combo);
+      vibrate(12);
+      popScore(el, gain);
+      document.body.classList.toggle('zone', state.combo >= ZONE_COMBO);
+      const isFeverStart = state.combo % FEVER_EVERY === 0;
+      if(isFeverStart){ startFever(); sound.fever(); vibrate([0,30,40,30]); }
       state.level++;
       buildLevel();
     }else{
       state.combo = 0;
       stopFever();
+      document.body.classList.remove('zone');
       state.timeLeft = Math.max(0, state.timeLeft - 2);
+      sound.miss();
+      vibrate([0,60,50,60]);
       $('grid').classList.remove('shake');
       void $('grid').offsetWidth;
       $('grid').classList.add('shake');
+      flashPenalty();
     }
     paintHud();
+  }
+
+  // ミス時の「−2秒」表示
+  function flashPenalty(){
+    const p = $('penalty');
+    p.classList.remove('show');
+    void p.offsetWidth;
+    p.classList.add('show');
   }
 
   /* ----- HUD ----- */
@@ -621,6 +818,17 @@
     const dt = (t - state.lastTick)/1000;
     state.lastTick = t;
     state.timeLeft = Math.max(0, state.timeLeft - dt);
+
+    // 残り5秒からの秒読み
+    const sec = Math.ceil(state.timeLeft);
+    if(sec !== state.lastSec){
+      if(sec <= 5 && sec > 0 && state.timeLeft > 0){
+        sound.countdown();
+        document.body.classList.add('hurry');
+      }
+      state.lastSec = sec;
+    }
+
     if(state.feverUntil){
       if(!inFever()){ stopFever(); }
       else{
@@ -637,9 +845,11 @@
   window.startGame = function(){
     Object.assign(state,{
       running:true, score:0, combo:0, maxCombo:0, level:1,
-      timeLeft:GAME_SEC,
+      timeLeft:GAME_SEC, lastSec:GAME_SEC,
     });
+    sound.unlock();
     stopFever();
+    document.body.classList.remove('zone','hurry');
     $('reveal-msg').textContent = '';
     if(typeof gtag === 'function') gtag('event', 'game_start');
     show('scr-game');
@@ -652,7 +862,10 @@
   function endGame(){
     state.running = false;
     stopFever();
+    document.body.classList.remove('zone','hurry');
     cancelAnimationFrame(state.raf);
+    sound.gameover();
+    vibrate([0,100,60,100]);
 
     // 2段階リベール：まず正解を控えめに示し、その後素の状態で見せる
     const btns = $('grid').children;
@@ -685,9 +898,11 @@
     $('r-lv').textContent = state.level;
     $('r-combo').textContent = state.maxCombo;
 
-    if(state.score > best){
+    const isNewBest = state.score > best;
+    if(isNewBest){
       best = state.score;
       localStorage.setItem('irooni_best', best);
+      setTimeout(()=>{ sound.fanfare(); vibrate([0,40,40,40,40,80]); }, 250);
     }
     $('bestval').textContent = best.toLocaleString();
     $('bestval2').textContent = best.toLocaleString();
@@ -749,6 +964,19 @@
       setTimeout(()=>t.classList.remove('show'),1800);
     }catch(e){}
   };
+
+  // ミュート切り替え
+  function paintMute(){
+    const b = $('mute');
+    b.textContent = sound.muted ? '🔇' : '🔊';
+    b.classList.toggle('off', sound.muted);
+  }
+  window.toggleMute = function(){
+    sound.toggle();
+    paintMute();
+    if(typeof gtag === 'function') gtag('event', 'toggle_mute', {muted: sound.muted});
+  };
+  paintMute();
 
   // 起動時ベスト表示
   if(best>0){
