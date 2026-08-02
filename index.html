@@ -540,8 +540,11 @@
       rankEmpty:'まだ記録がありません。<br>プレイして名を刻もう。',
       namePh:'なまえ（10文字まで）', submitBtn:'世界ランキングに登録',
       copied:'コピーしました',
-      loading:'読み込み中…', fetchFail:'取得できませんでした。通信環境を確認してね。',
-      sendFail:'送信に失敗しました。もう一度試してね。',
+      loading:'読み込み中…',
+      fetchFail:d=>`取得できませんでした（${d}）。`,
+      sendFail:d=>`送信に失敗しました（${d}）。もう一度試してね。`,
+      offline:'サーバーに接続できません',
+      errCode:c=>`エラー ${c}`,
       sending:'送信中…', needName:'なまえを入れてね', registered:'登録しました！',
       rankedIn:n=>`世界${n}位にランクイン！`,
       bestRank:n=>`登録しました（自己ベストで世界${n}位）`,
@@ -573,8 +576,11 @@
       rankEmpty:'No scores yet.<br>Play a round and put your name up.',
       namePh:'your name (max 10)', submitBtn:'SUBMIT TO WORLD RANKING',
       copied:'Copied',
-      loading:'Loading…', fetchFail:"Couldn't load. Check your connection.",
-      sendFail:"Couldn't submit. Please try again.",
+      loading:'Loading…',
+      fetchFail:d=>`Couldn't load (${d}).`,
+      sendFail:d=>`Couldn't submit (${d}). Please try again.`,
+      offline:"can't reach the server",
+      errCode:c=>`error ${c}`,
       sending:'Sending…', needName:'Enter a name first', registered:'Submitted!',
       rankedIn:n=>`You're #${n} in the world!`,
       bestRank:n=>`Submitted (your best is #${n} in the world)`,
@@ -719,12 +725,30 @@
     else{ renderWorld(); }
   };
 
+  // 通信の失敗理由を保持する（休止・権限・制約違反を切り分けられるようにする）
+  async function sbCall(path, opts){
+    let res;
+    try{
+      res = await sbFetch(path, opts);
+    }catch(e){
+      const err = new Error('offline'); err.offline = true; throw err;
+    }
+    if(!res.ok){
+      let body = '';
+      try{ body = (await res.text()).slice(0, 200); }catch(e){}
+      const err = new Error('http '+res.status);
+      err.status = res.status; err.body = body;
+      throw err;
+    }
+    return res;
+  }
+  const failText = err => err.offline ? t('offline') : t('errCode')(err.status || '?');
+
   // 同名は最高スコアの1件だけ残す（スコア降順で最初に現れたものがその人のベスト）
   const WORLD_FETCH = 500;
   async function fetchWorldBest(){
-    const res = await sbFetch(
+    const res = await sbCall(
       `scores?select=name,score,level,combo,dev,title&order=score.desc,created_at.asc&limit=${WORLD_FETCH}`);
-    if(!res.ok) throw new Error(res.status);
     const rows = await res.json();
     const seen = new Set(), best = [];
     for(const r of rows){
@@ -763,7 +787,8 @@
       });
     }catch(err){
       if(!$('tab-world').classList.contains('on')) return;
-      ol.innerHTML = `<p class="rank-loading">${esc(t('fetchFail'))}</p>`;
+      console.warn('[Ironly] ranking fetch failed:', err.status || 'offline', err.body || '');
+      ol.innerHTML = `<p class="rank-loading">${esc(t('fetchFail')(failText(err)))}</p>`;
     }
   }
 
@@ -782,14 +807,13 @@
     localStorage.setItem('irooni_name', name);
     const entry = state.lastEntry;
     try{
-      const res = await sbFetch('scores', {
+      await sbCall('scores', {
         method:'POST',
         body: JSON.stringify({
           name, score: entry.score, level: entry.level,
           combo: entry.combo, dev: entry.dev, title: entry.title,
         }),
       });
-      if(!res.ok) throw new Error(res.status);
       state.submitted = true;
       // 同名を1件に絞ったランキング上での自分の順位を出す
       let rankText = t('registered');
@@ -804,7 +828,8 @@
       msg.textContent = rankText;
       if(typeof gtag === 'function') gtag('event', 'submit_global_score', {score: entry.score});
     }catch(err){
-      msg.textContent = t('sendFail');
+      console.warn('[Ironly] submit failed:', err.status || 'offline', err.body || '');
+      msg.textContent = t('sendFail')(failText(err));
       msg.classList.add('err');
       $('gsend').disabled = false;
     }
