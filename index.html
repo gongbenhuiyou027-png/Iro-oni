@@ -778,7 +778,6 @@
   const VARIANTS = {
     drift:   {name:'ドリフト', hint:'色がゆっくり動く'},
     inverse: {name:'逆オニ',   hint:'同じ色が2枚ある。どちらかをタップ'},
-    mono:    {name:'モノクロ', hint:'明るさだけで探せ'},
   };
   const VARIANT_KEYS = Object.keys(VARIANTS);
 
@@ -839,13 +838,11 @@
       state.answers = laid.reduce((acc,v,i)=>(v===dup && acc.push(i), acc), []);
       colors = laid.map(hv => hsl(hv, s, l));
     }else{
-      // 通常・ドリフト・モノクロ：1枚だけ色が違う
-      const mono = variant === 'mono';
-      const s = mono ? 0 : 45 + Math.random()*35;
-      const l = mono ? 42 + Math.random()*16 : 38 + Math.random()*26;
-      // モノクロは色相の手がかりが無いぶん、明度差を少し広げる
-      const hueShift = mono ? 0 : (Math.random()<.5?-1:1) * Math.min(diff*.5, 8);
-      const lShift   = (l>55?-1:1) * diff * (mono ? .8 : .55);
+      // 通常・ドリフト：1枚だけ色が違う
+      const s = 45 + Math.random()*35;
+      const l = 38 + Math.random()*26;
+      const hueShift = (Math.random()<.5?-1:1) * Math.min(diff*.5, 8);
+      const lShift   = (l>55?-1:1) * diff*.55;
       const answer = Math.floor(Math.random()*n);
       state.answers = [answer];
       colors = Array.from({length:n}, (_,i) =>
@@ -854,8 +851,7 @@
     state.answer = state.answers[0];
 
     // UIアクセント色を出題色に連動させる（署名演出）
-    document.documentElement.style.setProperty('--accent',
-      hsl(h, variant === 'mono' ? 30 : 75, 62));
+    document.documentElement.style.setProperty('--accent', hsl(h, 75, 62));
 
     colors.forEach((bg, i) => {
       const b = document.createElement('button');
