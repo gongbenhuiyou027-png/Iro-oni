@@ -554,7 +554,7 @@
       metaLine:(t,lv,c,d)=>`${t} ・ LV${lv} ・ 最大${c}コンボ ・ ${d}`,
       worldMeta:(dev,t,lv,c)=>`偏差値${dev} ・ ${t} ・ LV${lv} ・ 最大${c}コンボ`,
       variants:{ drift:{name:'ドリフト', hint:'色がゆっくり動く'},
-                 inverse:{name:'逆オニ', hint:'同じ色が2枚ある。どちらかをタップ'} },
+                 inverse:{name:'逆オニ', hint:'同じ色が4枚ある。どれかをタップ'} },
       titles:['色の神','人間卒業','四色型色覚','印刷所の目','染織職人','色彩鑑定士',
               'デザイナーの卵','色感アリ','ふつうの人','昨日寝てない？','蛍光灯の下暮らし','モノクロ生活'],
       shareText:(d,t,sc,sec,lv)=>
@@ -590,7 +590,7 @@
       metaLine:(t,lv,c,d)=>`${t} ・ LV${lv} ・ ${c} combo ・ ${d}`,
       worldMeta:(dev,t,lv,c)=>`Rating ${dev} ・ ${t} ・ LV${lv} ・ ${c} combo`,
       variants:{ drift:{name:'DRIFT', hint:'the colors keep shifting'},
-                 inverse:{name:'REVERSE', hint:'two tiles match — tap either one'} },
+                 inverse:{name:'REVERSE', hint:'four tiles match — tap any of them'} },
       titles:['Color God','Beyond Human','Tetrachromat','Press-Room Eye','Master Dyer','Color Appraiser',
               'Design Rookie','Good Eye','Perfectly Average','Need More Sleep?','Fluorescent Dweller','Living in Grayscale'],
       shareText:(d,t,sc,sec,lv)=>
@@ -980,6 +980,7 @@
   const VARIANT_CHANCE = 0.3;      // 出現率
   const VARIANT_BONUS = 1.5;       // 難しいぶん得点にボーナス
   const VARIANT_KEYS = ['drift','inverse'];
+  const INVERSE_DUPES = 4;   // 逆オニで同じ色になるタイル数
 
   function pickVariant(lv){
     if(lv < VARIANT_FROM_LEVEL) return null;
@@ -1027,14 +1028,15 @@
     let colors;   // 各マスの色（CSS文字列）
 
     if(variant === 'inverse'){
-      // 全マス違う色。1色だけ2枚あり、その2枚を探す
+      // 全マス違う色。1色だけINVERSE_DUPES枚あり、そのどれかを探す
       const s = 55 + Math.random()*20;
       const l = 48 + Math.random()*10;
-      const step = 360/n;
+      const kinds = n - INVERSE_DUPES + 1;       // 色の種類数
+      const step = 360/kinds;                    // 種類が減るぶん色相の間隔は広がる
       const hues = [];
-      for(let i=0;i<n-1;i++) hues.push((h + step*i + (Math.random()-.5)*step*.4) % 360);
+      for(let i=0;i<kinds;i++) hues.push((h + step*i + (Math.random()-.5)*step*.4) % 360);
       const dup = hues[Math.floor(Math.random()*hues.length)];
-      const laid = shuffled(hues.concat(dup));
+      const laid = shuffled(hues.concat(Array(INVERSE_DUPES-1).fill(dup)));
       state.answers = laid.reduce((acc,v,i)=>(v===dup && acc.push(i), acc), []);
       colors = laid.map(hv => hsl(hv, s, l));
     }else{
